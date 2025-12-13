@@ -1,0 +1,1518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Prism Hold</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .sidebar-item.active { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .stat-card { transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); }
+        .order-status-tab { color: #6b7280; }
+        .order-status-tab.active { background: rgba(59, 130, 246, 0.1); color: #1e40af; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Admin Login</h2>
+            <form id="admin-login-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="admin-email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <input type="password" id="admin-password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">Login</button>
+            </form>
+            <p id="login-error" class="text-red-500 text-sm mt-4 text-center hidden"></p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden">
+        <!-- Sidebar -->
+        <div class="fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-40">
+            <div class="p-6 border-b">
+                <h1 class="text-xl font-bold text-gray-900">Prism Hold</h1>
+                <p class="text-sm text-gray-500">Admin Dashboard</p>
+            </div>
+            <nav class="p-4 space-y-2">
+                <button onclick="showSection('dashboard-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3 active">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button onclick="showSection('products-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3">
+                    <i data-lucide="package"></i>
+                    <span>Products</span>
+                </button>
+                <button onclick="showSection('categories-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3">
+                    <i data-lucide="tags"></i>
+                    <span>Categories</span>
+                </button>
+                <button onclick="showSection('orders-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3">
+                    <i data-lucide="shopping-cart"></i>
+                    <span>Orders</span>
+                </button>
+                <button onclick="showSection('users-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3">
+                    <i data-lucide="users"></i>
+                    <span>Users</span>
+                </button>
+                <button onclick="showSection('help-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3">
+                    <i data-lucide="help-circle"></i>
+                    <span>Help Requests</span>
+                </button>
+                <button onclick="showSection('promo-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3">
+                    <i data-lucide="tag"></i>
+                    <span>Promo Codes</span>
+                </button>
+            </nav>
+            <div class="absolute bottom-4 left-4 right-4">
+                <button onclick="logout()" class="w-full bg-red-50 text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-red-100 transition flex items-center justify-center space-x-2">
+                    <i data-lucide="log-out"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="ml-64 p-8">
+            <!-- Dashboard Section -->
+            <div id="dashboard-section" class="section">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Dashboard Overview</h2>
+                <div id="stats-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- Stats will be loaded here -->
+                </div>
+                <div class="bg-white rounded-xl shadow p-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Recent Orders</h3>
+                    <div id="recent-orders" class="space-y-4">
+                        <!-- Recent orders will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Products Section -->
+            <div id="products-section" class="section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">Products</h2>
+                    <button onclick="openProductModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center space-x-2">
+                        <i data-lucide="plus"></i>
+                        <span>Add Product</span>
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div id="products-list" class="p-6">
+                        <!-- Products will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories Section -->
+            <div id="categories-section" class="section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">Categories</h2>
+                    <button onclick="openCategoryModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center space-x-2">
+                        <i data-lucide="plus"></i>
+                        <span>Add Category</span>
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div id="categories-list" class="p-6">
+                        <!-- Categories will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Section -->
+            <div id="orders-section" class="section hidden">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Orders</h2>
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div class="border-b border-gray-200">
+                        <div class="flex space-x-1 p-4">
+                            <button onclick="filterOrdersByStatus('all')" class="order-status-tab px-4 py-2 rounded-lg font-medium text-sm transition-all active bg-blue-50 text-blue-700" data-status="all">
+                                All Orders
+                            </button>
+                            <button onclick="filterOrdersByStatus('Processing')" class="order-status-tab px-4 py-2 rounded-lg font-medium text-sm transition-all" data-status="Processing">
+                                Processing
+                            </button>
+                            <button onclick="filterOrdersByStatus('Shipped')" class="order-status-tab px-4 py-2 rounded-lg font-medium text-sm transition-all" data-status="Shipped">
+                                Shipped
+                            </button>
+                            <button onclick="filterOrdersByStatus('Delivered')" class="order-status-tab px-4 py-2 rounded-lg font-medium text-sm transition-all" data-status="Delivered">
+                                Delivered
+                            </button>
+                            <button onclick="filterOrdersByStatus('Cancelled')" class="order-status-tab px-4 py-2 rounded-lg font-medium text-sm transition-all" data-status="Cancelled">
+                                Cancelled
+                            </button>
+                        </div>
+                    </div>
+                    <div id="orders-list" class="p-6">
+                        <!-- Orders will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Section -->
+            <div id="users-section" class="section hidden">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Users</h2>
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div id="users-list" class="p-6">
+                        <!-- Users will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Help Requests Section -->
+            <div id="help-section" class="section hidden">
+                <h2 class="text-3xl font-bold text-gray-900 mb-6">Help Requests</h2>
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div id="help-requests-list" class="p-6">
+                        <!-- Help requests will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Promo Codes Section -->
+            <div id="promo-section" class="section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-gray-900">Promo Codes</h2>
+                    <button onclick="openPromoModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center space-x-2">
+                        <i data-lucide="plus"></i>
+                        <span>Add Promo Code</span>
+                    </button>
+                </div>
+                <div class="bg-white rounded-xl shadow overflow-hidden">
+                    <div id="promo-codes-list" class="p-6">
+                        <!-- Promo codes will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6" id="product-modal-title">Add Product</h2>
+            <form id="product-form" class="space-y-4">
+                <input type="hidden" id="product-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Product ID</label>
+                        <input type="number" id="product-id-field" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Price</label>
+                        <input type="number" id="product-price" step="0.01" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <input type="text" id="product-name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Images (Multiple)</label>
+                    <div class="space-y-3">
+                        <div class="flex items-center space-x-2">
+                            <input type="file" id="product-image-file" accept="image/*" multiple class="hidden" onchange="handleMultipleImageFileSelect(event)">
+                            <button type="button" onclick="document.getElementById('product-image-file').click()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm">Upload Images</button>
+                            <span class="text-sm text-gray-500">or</span>
+                            <input type="text" id="product-image-url-input" placeholder="Add Image URL" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                            <button type="button" onclick="addImageFromUrl()" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm">Add URL</button>
+                        </div>
+                        <div id="product-images-preview" class="mt-2 space-y-2">
+                            <!-- Images will be added here -->
+                        </div>
+                        <input type="hidden" id="product-images-json" value="[]">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
+                    <input type="number" id="product-discount" min="0" max="100" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select id="product-category" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <option value="">Select Category</option>
+                        <!-- Categories will be loaded dynamically -->
+                    </select>
+                    <button type="button" onclick="openCategoryModal()" class="mt-2 text-xs text-blue-600 hover:underline">+ Add New Category</button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Material</label>
+                    <input type="text" id="product-material" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="product-description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">Save</button>
+                    <button type="button" onclick="closeProductModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Promo Code Modal -->
+    <div id="promo-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6" id="promo-modal-title">Add Promo Code</h2>
+            <form id="promo-form" class="space-y-4">
+                <input type="hidden" id="promo-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Code</label>
+                        <input type="text" id="promo-code" required class="w-full px-4 py-2 border border-gray-300 rounded-lg uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Discount Type</label>
+                        <select id="promo-discount-type" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <option value="percentage">Percentage</option>
+                            <option value="fixed">Fixed Amount</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Discount Value</label>
+                        <input type="number" id="promo-discount-value" step="0.01" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Max Discount (for %)</label>
+                        <input type="number" id="promo-max-discount" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Applicable To</label>
+                    <select id="promo-applicable-to" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <option value="all">All Products</option>
+                        <option value="specific">Specific Products</option>
+                    </select>
+                </div>
+                <div id="promo-products-container" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Product IDs (comma separated)</label>
+                    <input type="text" id="promo-product-ids" placeholder="1,2,3" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Min Purchase</label>
+                        <input type="number" id="promo-min-purchase" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Usage Limit</label>
+                        <input type="number" id="promo-usage-limit" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Valid From</label>
+                        <input type="datetime-local" id="promo-valid-from" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Valid Until</label>
+                        <input type="datetime-local" id="promo-valid-until" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="promo-description" rows="2" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="promo-is-active" checked class="w-4 h-4 text-blue-600 border-gray-300 rounded">
+                    <label for="promo-is-active" class="ml-2 text-sm text-gray-700">Active</label>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">Save</button>
+                    <button type="button" onclick="closePromoModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="category-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6" id="category-modal-title">Add Category</h2>
+            <form id="category-form" class="space-y-4">
+                <input type="hidden" id="category-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <input type="text" id="category-name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <textarea id="category-description" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Cover Image</label>
+                    <div class="space-y-3">
+                        <div class="flex items-center space-x-2">
+                            <input type="file" id="category-cover-image-file" accept="image/*" class="hidden" onchange="handleCategoryImageFileSelect(event)">
+                            <button type="button" onclick="document.getElementById('category-cover-image-file').click()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm">Upload Image</button>
+                            <span class="text-sm text-gray-500">or</span>
+                            <input type="text" id="category-cover-image-url-input" placeholder="Add Image URL" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                            <button type="button" onclick="addCategoryImageFromUrl()" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm">Add URL</button>
+                        </div>
+                        <div id="category-cover-image-preview" class="mt-2">
+                            <!-- Image preview will be added here -->
+                        </div>
+                        <input type="hidden" id="category-cover-image-url" value="">
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition">Save</button>
+                    <button type="button" onclick="closeCategoryModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300 transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3000/api';
+        let adminToken = localStorage.getItem('adminToken');
+        let currentSection = 'dashboard-section';
+
+        // Initialize
+        if (adminToken) {
+            document.getElementById('login-modal').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            loadDashboard();
+        } else {
+            document.getElementById('login-modal').classList.remove('hidden');
+        }
+        lucide.createIcons();
+
+        // API Helper
+        async function apiRequest(endpoint, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${adminToken}`,
+                ...options.headers
+            };
+            
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                ...options,
+                headers
+            });
+            
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ error: 'Request failed' }));
+                throw new Error(error.error || 'Request failed');
+            }
+            
+            return await response.json();
+        }
+
+        // Login
+        document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Login failed');
+                }
+                
+                const data = await response.json();
+                adminToken = data.token;
+                localStorage.setItem('adminToken', adminToken);
+                document.getElementById('login-modal').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadDashboard();
+            } catch (error) {
+                document.getElementById('login-error').textContent = error.message;
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        });
+
+        function logout() {
+            adminToken = null;
+            localStorage.removeItem('adminToken');
+            document.getElementById('login-modal').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(sectionId).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+            event.target.closest('.sidebar-item').classList.add('active');
+            currentSection = sectionId;
+            
+            if (sectionId === 'dashboard-section') loadDashboard();
+            else if (sectionId === 'products-section') loadProducts();
+            else if (sectionId === 'categories-section') loadCategories();
+            else if (sectionId === 'orders-section') loadOrders();
+            else if (sectionId === 'users-section') loadUsers();
+            else if (sectionId === 'help-section') loadHelpRequests();
+            else if (sectionId === 'promo-section') loadPromoCodes();
+            else if (sectionId === 'products-section') {
+                loadProducts();
+                loadCategoriesForDropdown();
+            }
+        }
+        
+        // Multiple Images Management
+        let productImages = [];
+        
+        function renderProductImages() {
+            const container = document.getElementById('product-images-preview');
+            if (!container) return;
+            
+            container.innerHTML = productImages.map((url, index) => `
+                <div class="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                    <img src="${url}" alt="Preview ${index + 1}" class="w-16 h-16 object-cover rounded border border-gray-200">
+                    <div class="flex-1">
+                        <p class="text-xs text-gray-600 truncate">${url}</p>
+                    </div>
+                    <button type="button" onclick="removeProductImage(${index})" class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition text-sm">Remove</button>
+                </div>
+            `).join('');
+            
+            document.getElementById('product-images-json').value = JSON.stringify(productImages);
+        }
+        
+        function addProductImage(url) {
+            if (url && !productImages.includes(url)) {
+                productImages.push(url);
+                renderProductImages();
+            }
+        }
+        
+        function removeProductImage(index) {
+            productImages.splice(index, 1);
+            renderProductImages();
+        }
+        
+        async function handleMultipleImageFileSelect(event) {
+            const files = Array.from(event.target.files);
+            if (!files.length) return;
+            
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('image', file);
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/admin/upload`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${adminToken}` },
+                        body: formData
+                    });
+                    
+                    if (!response.ok) throw new Error('Upload failed');
+                    
+                    const data = await response.json();
+                    addProductImage(data.url);
+                } catch (error) {
+                    alert('Failed to upload image: ' + error.message);
+                }
+            }
+            
+            // Reset file input
+            event.target.value = '';
+        }
+        
+        function addImageFromUrl() {
+            const urlInput = document.getElementById('product-image-url-input');
+            const url = urlInput.value.trim();
+            if (url) {
+                addProductImage(url);
+                urlInput.value = '';
+            }
+        }
+
+        // Dashboard
+        async function loadDashboard() {
+            try {
+                const stats = await apiRequest('/admin/stats');
+                
+                document.getElementById('stats-container').innerHTML = `
+                    <div class="stat-card bg-white rounded-xl shadow p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Total Users</p>
+                                <p class="text-3xl font-bold text-gray-900">${stats.totalUsers}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card bg-white rounded-xl shadow p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Total Orders</p>
+                                <p class="text-3xl font-bold text-gray-900">${stats.totalOrders}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="shopping-cart" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card bg-white rounded-xl shadow p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Total Products</p>
+                                <p class="text-3xl font-bold text-gray-900">${stats.totalProducts}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="package" class="w-6 h-6 text-purple-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-card bg-white rounded-xl shadow p-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 mb-1">Pending Requests</p>
+                                <p class="text-3xl font-bold text-gray-900">${stats.pendingHelpRequests}</p>
+                            </div>
+                            <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="help-circle" class="w-6 h-6 text-orange-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('recent-orders').innerHTML = stats.recentOrders.map(order => `
+                    <div class="border-b border-gray-200 pb-4 last:border-0">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-semibold text-gray-900">Order #${order.id.slice(0, 8).toUpperCase()}</p>
+                                <p class="text-sm text-gray-500">${order.userId?.email || 'N/A'}</p>
+                                <p class="text-sm text-gray-500">${new Date(order.createdAt).toLocaleString()}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-gray-900">$${order.total.toFixed(2)}</p>
+                                <span class="text-xs px-2 py-1 rounded-full ${getStatusColor(order.status)}">${order.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'Processing': 'bg-yellow-100 text-yellow-800',
+                'Shipped': 'bg-blue-100 text-blue-800',
+                'Delivered': 'bg-green-100 text-green-800',
+                'Cancelled': 'bg-red-100 text-red-800'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        // Load categories for dropdown
+        async function loadCategoriesForDropdown() {
+            try {
+                const categories = await apiRequest('/admin/categories');
+                const select = document.getElementById('product-category');
+                if (select) {
+                    const currentValue = select.value;
+                    select.innerHTML = '<option value="">Select Category</option>' + 
+                        categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('');
+                    if (currentValue) select.value = currentValue;
+                }
+            } catch (error) {
+                console.error('Failed to load categories:', error);
+            }
+        }
+
+        // Products
+        async function loadProducts() {
+            try {
+                const products = await apiRequest('/admin/products');
+                document.getElementById('products-list').innerHTML = products.length ? `
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Price</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Discount</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Category</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            ${products.map(p => {
+                                const discountedPrice = p.discount ? (p.price * (1 - p.discount / 100)).toFixed(2) : null;
+                                return `
+                                <tr>
+                                    <td class="px-4 py-3 text-sm">${p.id}</td>
+                                    <td class="px-4 py-3 text-sm font-medium">${p.name}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        ${discountedPrice ? `<span class="line-through text-gray-400">$${p.price.toFixed(2)}</span> <span class="text-green-600 font-bold">$${discountedPrice}</span>` : `$${p.price.toFixed(2)}`}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">${p.discount ? p.discount + '%' : '0%'}</td>
+                                    <td class="px-4 py-3 text-sm">${p.category || 'N/A'}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <button onclick="editProduct('${p._id}')" class="text-blue-600 hover:text-blue-800 mr-3">Edit</button>
+                                        <button onclick="deleteProduct('${p._id}')" class="text-red-600 hover:text-red-800">Delete</button>
+                                    </td>
+                                </tr>
+                            `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p class="text-center text-gray-500 py-8">No products found</p>';
+            } catch (error) {
+                console.error('Failed to load products:', error);
+            }
+        }
+
+        function openProductModal(productId = null) {
+            document.getElementById('product-modal').classList.remove('hidden');
+            loadCategoriesForDropdown(); // Load categories when opening modal
+            productImages = []; // Reset images array
+            renderProductImages();
+            if (productId) {
+                document.getElementById('product-modal-title').textContent = 'Edit Product';
+                loadProductForEdit(productId);
+            } else {
+                document.getElementById('product-modal-title').textContent = 'Add Product';
+                document.getElementById('product-form').reset();
+                document.getElementById('product-id').value = '';
+            }
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.add('hidden');
+        }
+
+        async function loadProductForEdit(id) {
+            try {
+                const products = await apiRequest('/admin/products');
+                const product = products.find(p => p._id === id || p.id === id);
+                if (!product) {
+                    alert('Product not found');
+                    closeProductModal();
+                    return;
+                }
+                
+                document.getElementById('product-id').value = product._id || product.id;
+                document.getElementById('product-id-field').value = product.id || product._id;
+                document.getElementById('product-name').value = product.name || '';
+                document.getElementById('product-price').value = product.price || '';
+                document.getElementById('product-discount').value = product.discount || 0;
+                document.getElementById('product-category').value = product.category || '';
+                document.getElementById('product-material').value = product.material || '';
+                document.getElementById('product-description').value = product.description || '';
+                
+                // Load images
+                productImages = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : []);
+                renderProductImages();
+            } catch (error) {
+                alert('Failed to load product: ' + error.message);
+                closeProductModal();
+            }
+        }
+
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const productId = document.getElementById('product-id').value;
+            
+            if (productImages.length === 0) {
+                alert('Please add at least one image');
+                return;
+            }
+            
+            // Use first image as main image, rest as additional images
+            const mainImage = productImages[0];
+            const additionalImages = productImages.slice(1);
+            
+            const data = {
+                id: parseInt(document.getElementById('product-id-field').value),
+                name: document.getElementById('product-name').value,
+                price: parseFloat(document.getElementById('product-price').value),
+                discount: parseFloat(document.getElementById('product-discount').value) || 0,
+                image: mainImage, // Main image for backward compatibility
+                images: productImages, // All images array
+                category: document.getElementById('product-category').value,
+                material: document.getElementById('product-material').value,
+                description: document.getElementById('product-description').value
+            };
+            
+            try {
+                if (productId) {
+                    await apiRequest(`/admin/products/${productId}`, { method: 'PUT', body: JSON.stringify(data) });
+                } else {
+                    await apiRequest('/admin/products', { method: 'POST', body: JSON.stringify(data) });
+                }
+                closeProductModal();
+                productImages = [];
+                renderProductImages();
+                loadProducts();
+            } catch (error) {
+                alert('Failed to save product: ' + error.message);
+            }
+        });
+
+        async function editProduct(id) {
+            openProductModal(id);
+        }
+
+        async function deleteProduct(id) {
+            if (confirm('Delete this product?')) {
+                try {
+                    await apiRequest(`/admin/products/${id}`, { method: 'DELETE' });
+                    loadProducts();
+                } catch (error) {
+                    alert('Failed to delete product: ' + error.message);
+                }
+            }
+        }
+
+        // Categories
+        async function loadCategories() {
+            try {
+                const categories = await apiRequest('/admin/categories');
+                document.getElementById('categories-list').innerHTML = categories.length ? `
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Description</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            ${categories.map(c => `
+                                <tr>
+                                    <td class="px-4 py-3 text-sm font-medium">${c.name}</td>
+                                    <td class="px-4 py-3 text-sm">${c.description || 'N/A'}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <button onclick="editCategory('${c._id}')" class="text-blue-600 hover:text-blue-800 mr-3">Edit</button>
+                                        <button onclick="deleteCategory('${c._id}')" class="text-red-600 hover:text-red-800">Delete</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p class="text-center text-gray-500 py-8">No categories found</p>';
+            } catch (error) {
+                console.error('Failed to load categories:', error);
+            }
+        }
+
+        let categoryCoverImage = '';
+        
+        function renderCategoryCoverImage() {
+            const container = document.getElementById('category-cover-image-preview');
+            if (!container) return;
+            
+            if (categoryCoverImage) {
+                container.innerHTML = `
+                    <div class="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                        <img src="${categoryCoverImage}" alt="Preview" class="w-20 h-20 object-cover rounded border border-gray-200">
+                        <div class="flex-1">
+                            <p class="text-xs text-gray-600 truncate">${categoryCoverImage}</p>
+                        </div>
+                        <button type="button" onclick="removeCategoryCoverImage()" class="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition text-sm">Remove</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '';
+            }
+            
+            document.getElementById('category-cover-image-url').value = categoryCoverImage;
+        }
+        
+        function removeCategoryCoverImage() {
+            categoryCoverImage = '';
+            renderCategoryCoverImage();
+        }
+        
+        async function handleCategoryImageFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/admin/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${adminToken}` },
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Upload failed');
+                
+                const data = await response.json();
+                categoryCoverImage = data.url;
+                renderCategoryCoverImage();
+            } catch (error) {
+                alert('Failed to upload image: ' + error.message);
+            }
+            
+            event.target.value = '';
+        }
+        
+        function addCategoryImageFromUrl() {
+            const urlInput = document.getElementById('category-cover-image-url-input');
+            const url = urlInput.value.trim();
+            if (url) {
+                categoryCoverImage = url;
+                renderCategoryCoverImage();
+                urlInput.value = '';
+            }
+        }
+        
+        function openCategoryModal(categoryId = null) {
+            document.getElementById('category-modal').classList.remove('hidden');
+            categoryCoverImage = '';
+            renderCategoryCoverImage();
+            if (categoryId) {
+                document.getElementById('category-modal-title').textContent = 'Edit Category';
+                loadCategoryForEdit(categoryId);
+            } else {
+                document.getElementById('category-modal-title').textContent = 'Add Category';
+                document.getElementById('category-form').reset();
+                document.getElementById('category-id').value = '';
+            }
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('category-modal').classList.add('hidden');
+        }
+
+        async function loadCategoryForEdit(id) {
+            try {
+                const categories = await apiRequest('/admin/categories');
+                const category = categories.find(c => c._id === id);
+                if (!category) {
+                    alert('Category not found');
+                    closeCategoryModal();
+                    return;
+                }
+                
+                document.getElementById('category-id').value = category._id;
+                document.getElementById('category-name').value = category.name || '';
+                document.getElementById('category-description').value = category.description || '';
+                categoryCoverImage = category.coverImage || '';
+                renderCategoryCoverImage();
+            } catch (error) {
+                alert('Failed to load category: ' + error.message);
+                closeCategoryModal();
+            }
+        }
+
+        async function editCategory(id) {
+            openCategoryModal(id);
+        }
+        
+        document.getElementById('category-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const categoryId = document.getElementById('category-id').value;
+            const data = {
+                name: document.getElementById('category-name').value,
+                description: document.getElementById('category-description').value,
+                coverImage: categoryCoverImage
+            };
+            
+            try {
+                if (categoryId) {
+                    await apiRequest(`/admin/categories/${categoryId}`, { method: 'PUT', body: JSON.stringify(data) });
+                } else {
+                    await apiRequest('/admin/categories', { method: 'POST', body: JSON.stringify(data) });
+                }
+                closeCategoryModal();
+                loadCategories();
+                loadCategoriesForDropdown(); // Refresh dropdown
+            } catch (error) {
+                alert('Failed to save category: ' + error.message);
+            }
+        });
+
+        async function deleteCategory(id) {
+            if (confirm('Delete this category?')) {
+                try {
+                    await apiRequest(`/admin/categories/${id}`, { method: 'DELETE' });
+                    loadCategories();
+                } catch (error) {
+                    alert('Failed to delete category: ' + error.message);
+                }
+            }
+        }
+
+        // Currency formatter
+        const formatCurrency = (amount) => `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0, minimumFractionDigits: 0 })}`;
+
+        // Orders
+        let allOrders = [];
+        let currentOrderFilter = 'all';
+        
+        async function loadOrders() {
+            try {
+                allOrders = await apiRequest('/admin/orders');
+                renderOrders();
+            } catch (error) {
+                console.error('Failed to load orders:', error);
+            }
+        }
+        
+        function filterOrdersByStatus(status) {
+            currentOrderFilter = status;
+            // Update active tab
+            document.querySelectorAll('.order-status-tab').forEach(tab => {
+                if (tab.dataset.status === status) {
+                    tab.classList.add('active', 'bg-blue-50', 'text-blue-700');
+                } else {
+                    tab.classList.remove('active', 'bg-blue-50', 'text-blue-700');
+                }
+            });
+            renderOrders();
+        }
+        
+        function toggleOrderDetails(orderId) {
+            const detailsDiv = document.getElementById(`order-details-${orderId}`);
+            const icon = document.getElementById(`order-toggle-icon-${orderId}`);
+            if (detailsDiv.classList.contains('hidden')) {
+                detailsDiv.classList.remove('hidden');
+                icon.classList.remove('rotate-0');
+                icon.classList.add('rotate-180');
+            } else {
+                detailsDiv.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+                icon.classList.add('rotate-0');
+            }
+        }
+        
+        function renderOrders() {
+            const filteredOrders = currentOrderFilter === 'all' 
+                ? allOrders 
+                : allOrders.filter(o => (o.status || 'Processing') === currentOrderFilter);
+            
+            document.getElementById('orders-list').innerHTML = filteredOrders.length ? `
+                <div class="space-y-4">
+                    ${filteredOrders.map(order => {
+                        const orderId = order.id ? order.id.slice(0, 8).toUpperCase() : 'N/A';
+                        const date = order.date || new Date(order.createdAt).toLocaleString();
+                        const subtotal = order.subtotal || (order.items ? order.items.reduce((s, i) => s + (i.price * i.quantity), 0) : 0);
+                        const discount = order.discount || 0;
+                        const total = order.total || subtotal;
+                        const paymentMethod = order.payment || 'N/A';
+                        const address = order.address || {};
+                        const items = order.items || [];
+                        const status = order.status || 'Processing';
+                        const userEmail = order.userId?.email || 'N/A';
+                        const userName = order.userId?.displayName || address.name || 'N/A';
+                        const itemsCount = items.length;
+                        const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+                        
+                        return `
+                        <div class="border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden">
+                            <!-- Summary View (Always Visible) -->
+                            <div class="p-4 cursor-pointer hover:bg-gray-50 transition-colors" onclick="toggleOrderDetails('${order.id}')">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-3 mb-2">
+                                            <p class="text-lg font-bold text-primary">#${orderId}</p>
+                                            <span class="text-xs px-2 py-1 rounded-full font-bold ${getStatusColor(status)}">${status}</span>
+                                        </div>
+                                        <div class="text-sm text-gray-600 space-y-1">
+                                            <p><span class="font-medium">Customer:</span> ${userName} (${userEmail})</p>
+                                            <p><span class="font-medium">Date:</span> ${date}</p>
+                                            <p><span class="font-medium">Items:</span> ${itemsCount} product${itemsCount !== 1 ? 's' : ''} (${totalItems} total)</p>
+                                            <p><span class="font-medium">Total:</span> ${formatCurrency(total)}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col items-end gap-2">
+                                        <select onchange="event.stopPropagation(); updateOrderStatus('${order.id}', this.value)" class="text-xs px-3 py-1 rounded-full font-bold ${getStatusColor(status)} border-0 cursor-pointer">
+                                            <option ${status === 'Processing' ? 'selected' : ''}>Processing</option>
+                                            <option ${status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                                            <option ${status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                            <option ${status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                                        </select>
+                                        <i id="order-toggle-icon-${order.id}" data-lucide="chevron-down" class="w-5 h-5 text-gray-400 transition-transform duration-200 rotate-0"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Full Details (Collapsible) -->
+                            <div id="order-details-${order.id}" class="hidden border-t border-gray-200 p-6 bg-gray-50">
+                                <div class="space-y-4">
+                                    <div>
+                                        <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Delivery Address</p>
+                                        <div class="text-sm text-gray-800">
+                                            <p class="font-bold">${address.name || 'N/A'}</p>
+                                            <p class="text-gray-600">${address.street || ''}</p>
+                                            <p class="text-gray-600">${address.city || ''}, ${address.zip || ''}</p>
+                                            <p class="text-gray-600 mt-1">Phone: ${address.phone || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Items Ordered</p>
+                                        <div class="space-y-2">
+                                            ${items.map(item => `
+                                                <div class="flex justify-between items-start pb-2 border-b border-gray-200 last:border-0">
+                                                    <div class="flex-1">
+                                                        <p class="text-sm font-bold text-gray-900">${item.name || 'N/A'}</p>
+                                                        <p class="text-xs text-gray-500 mt-1">Qty: ${item.quantity} × ${formatCurrency(item.price)}</p>
+                                                    </div>
+                                                    <p class="text-sm font-bold text-primary ml-4">${formatCurrency(item.price * item.quantity)}</p>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="pt-4 border-t-2 border-gray-200 space-y-2">
+                                        <div class="flex justify-between text-sm">
+                                            <span class="text-gray-600">Subtotal</span>
+                                            <span class="font-medium text-gray-800">${formatCurrency(subtotal)}</span>
+                                        </div>
+                                        ${discount > 0 ? `
+                                        <div class="flex justify-between text-sm">
+                                            <span class="text-green-600">Discount</span>
+                                            <span class="font-medium text-green-600">-${formatCurrency(discount)}</span>
+                                        </div>
+                                        ` : ''}
+                                        <div class="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
+                                            <span class="text-primary">Total</span>
+                                            <span class="text-accent">${formatCurrency(total)}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="pt-4 border-t border-gray-200">
+                                        <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Payment Method</p>
+                                        <p class="text-sm font-medium text-gray-800">${paymentMethod}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            ` : '<p class="text-center text-gray-500 py-8">No orders found</p>';
+            
+            lucide.createIcons();
+        }
+
+        async function updateOrderStatus(orderId, status) {
+            try {
+                await apiRequest(`/admin/orders/${orderId}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+                // Update the order in allOrders array
+                const orderIndex = allOrders.findIndex(o => o.id === orderId);
+                if (orderIndex !== -1) {
+                    allOrders[orderIndex].status = status;
+                }
+                renderOrders();
+            } catch (error) {
+                alert('Failed to update order status: ' + error.message);
+            }
+        }
+
+        // Users
+        async function loadUsers() {
+            try {
+                const users = await apiRequest('/admin/users');
+                document.getElementById('users-list').innerHTML = users.length ? `
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Admin</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            ${users.map(u => `
+                                <tr>
+                                    <td class="px-4 py-3 text-sm">${u.email}</td>
+                                    <td class="px-4 py-3 text-sm">${u.displayName || 'N/A'}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <input type="checkbox" ${u.isAdmin ? 'checked' : ''} onchange="toggleAdmin('${u.id}', this.checked)">
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <button onclick="deleteUser('${u.id}')" class="text-red-600 hover:text-red-800">Delete</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p class="text-center text-gray-500 py-8">No users found</p>';
+            } catch (error) {
+                console.error('Failed to load users:', error);
+            }
+        }
+
+        async function toggleAdmin(userId, isAdmin) {
+            try {
+                await apiRequest(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify({ isAdmin }) });
+                loadUsers();
+            } catch (error) {
+                alert('Failed to update user: ' + error.message);
+            }
+        }
+
+        async function deleteUser(id) {
+            if (confirm('Delete this user?')) {
+                try {
+                    await apiRequest(`/admin/users/${id}`, { method: 'DELETE' });
+                    loadUsers();
+                } catch (error) {
+                    alert('Failed to delete user: ' + error.message);
+                }
+            }
+        }
+
+        // Help Requests - Chat Interface
+        let currentChatRequestId = null;
+        
+        async function loadHelpRequests() {
+            try {
+                const requests = await apiRequest('/admin/help-requests');
+                document.getElementById('help-requests-list').innerHTML = requests.length ? `
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Chat List -->
+                        <div class="lg:col-span-1 space-y-3 max-h-[600px] overflow-y-auto custom-scroll">
+                            ${requests.map(req => {
+                                const allMessages = [
+                                    { message: req.message, fromAdmin: false, createdAt: req.createdAt },
+                                    ...(req.replies || [])
+                                ];
+                                allMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                                
+                                const lastMessage = allMessages[allMessages.length - 1];
+                                const lastMessageTime = lastMessage.createdAt;
+                                const unreadCount = allMessages.filter(m => !m.fromAdmin).length;
+                                
+                                return `
+                                <div onclick="openHelpRequestChat('${req.id}')" class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition ${currentChatRequestId === req.id ? 'bg-blue-50 border-blue-300' : ''}">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="font-semibold text-gray-900 truncate">${req.userId?.displayName || req.email || 'User'}</p>
+                                            <p class="text-xs text-gray-500 truncate">${req.subject || 'General Inquiry'}</p>
+                                        </div>
+                                        ${unreadCount > 0 ? `<span class="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">${unreadCount}</span>` : ''}
+                                    </div>
+                                    <p class="text-sm text-gray-600 line-clamp-2 mb-2">${lastMessage.message || lastMessage}</p>
+                                    <div class="flex justify-between items-center">
+                                        <p class="text-xs text-gray-400">${new Date(lastMessageTime).toLocaleString()}</p>
+                                        <span class="text-xs px-2 py-0.5 rounded ${getStatusColor(req.status)}">${req.status}</span>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        
+                        <!-- Chat Window -->
+                        <div class="lg:col-span-2 border border-gray-200 rounded-lg flex flex-col" style="height: 600px;">
+                            <div id="help-request-chat-header" class="p-4 border-b border-gray-200 bg-gray-50">
+                                <p class="text-center text-gray-500">Select a conversation to view messages</p>
+                            </div>
+                            <div id="help-request-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll">
+                                <!-- Messages will be loaded here -->
+                            </div>
+                            <div id="help-request-chat-input" class="p-4 border-t border-gray-200 hidden">
+                                <form onsubmit="sendAdminReply(event)" class="flex space-x-3">
+                                    <input type="text" id="admin-reply-input" placeholder="Type your reply..." required class="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none">
+                                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                        <i data-lucide="send" class="w-5 h-5"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                ` : '<p class="text-center text-gray-500 py-8">No help requests found</p>';
+                
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Failed to load help requests:', error);
+            }
+        }
+        
+        async function openHelpRequestChat(requestId) {
+            currentChatRequestId = requestId;
+            try {
+                const requests = await apiRequest('/admin/help-requests');
+                const request = requests.find(r => r.id === requestId);
+                
+                if (!request) {
+                    alert('Request not found');
+                    return;
+                }
+                
+                // Update header
+                const header = document.getElementById('help-request-chat-header');
+                header.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold text-gray-900">${request.userId?.displayName || request.email || 'User'}</p>
+                            <p class="text-sm text-gray-500">${request.email || 'N/A'}</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <select onchange="updateHelpRequestStatus('${request.id}', this.value)" class="text-xs px-3 py-1 rounded ${getStatusColor(request.status)} border-0">
+                                <option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                <option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                            </select>
+                            <button onclick="deleteHelpRequest('${request.id}')" class="text-red-600 hover:text-red-800 text-sm px-3 py-1 rounded hover:bg-red-50">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Render messages
+                const messagesContainer = document.getElementById('help-request-chat-messages');
+                const messages = [
+                    { message: request.message, fromAdmin: false, createdAt: request.createdAt, subject: request.subject }
+                ];
+                
+                if (request.replies && request.replies.length > 0) {
+                    messages.push(...request.replies);
+                }
+                
+                messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                
+                messagesContainer.innerHTML = messages.map(msg => {
+                    const isAdmin = msg.fromAdmin;
+                    const date = new Date(msg.createdAt).toLocaleString();
+                    return `
+                        <div class="flex ${isAdmin ? 'justify-end' : 'justify-start'}">
+                            <div class="max-w-[70%] ${isAdmin ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-2xl px-4 py-3">
+                                ${msg.subject && !isAdmin ? `<p class="text-xs ${isAdmin ? 'text-white/70' : 'text-gray-500'} mb-1 font-semibold">${msg.subject}</p>` : ''}
+                                <p class="text-sm">${msg.message}</p>
+                                <p class="text-xs mt-1 ${isAdmin ? 'text-white/70' : 'text-gray-500'}">${date}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Show input
+                document.getElementById('help-request-chat-input').classList.remove('hidden');
+                
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Failed to load chat:', error);
+                alert('Failed to load conversation');
+            }
+        }
+        
+        async function sendAdminReply(e) {
+            e.preventDefault();
+            if (!currentChatRequestId) return;
+            
+            const input = document.getElementById('admin-reply-input');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            try {
+                await apiRequest(`/admin/help-requests/${currentChatRequestId}/reply`, {
+                    method: 'POST',
+                    body: JSON.stringify({ message })
+                });
+                
+                input.value = '';
+                await openHelpRequestChat(currentChatRequestId);
+                await loadHelpRequests(); // Refresh list
+            } catch (error) {
+                alert('Failed to send reply: ' + error.message);
+            }
+        }
+
+        async function updateHelpRequestStatus(id, status) {
+            try {
+                await apiRequest(`/admin/help-requests/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+                if (currentChatRequestId === id) {
+                    await openHelpRequestChat(id);
+                }
+                await loadHelpRequests();
+            } catch (error) {
+                alert('Failed to update help request: ' + error.message);
+            }
+        }
+
+        async function deleteHelpRequest(id) {
+            if (confirm('Delete this help request?')) {
+                try {
+                    await apiRequest(`/admin/help-requests/${id}`, { method: 'DELETE' });
+                    if (currentChatRequestId === id) {
+                        currentChatRequestId = null;
+                        document.getElementById('help-request-chat-header').innerHTML = '<p class="text-center text-gray-500">Select a conversation to view messages</p>';
+                        document.getElementById('help-request-chat-messages').innerHTML = '';
+                        document.getElementById('help-request-chat-input').classList.add('hidden');
+                    }
+                    await loadHelpRequests();
+                } catch (error) {
+                    alert('Failed to delete help request: ' + error.message);
+                }
+            }
+        }
+
+        // Promo Codes
+        async function loadPromoCodes() {
+            try {
+                const promoCodes = await apiRequest('/admin/promo-codes');
+                document.getElementById('promo-codes-list').innerHTML = promoCodes.length ? `
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Code</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Discount</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Applicable To</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            ${promoCodes.map(pc => `
+                                <tr>
+                                    <td class="px-4 py-3 text-sm font-medium">${pc.code}</td>
+                                    <td class="px-4 py-3 text-sm">${pc.discountType === 'percentage' ? pc.discountValue + '%' : '₹' + pc.discountValue}</td>
+                                    <td class="px-4 py-3 text-sm">${pc.applicableTo === 'all' ? 'All Products' : 'Specific Products'}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <span class="px-2 py-1 rounded-full text-xs ${pc.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${pc.isActive ? 'Active' : 'Inactive'}</span>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm">
+                                        <button onclick="editPromo('${pc.id}')" class="text-blue-600 hover:text-blue-800 mr-3">Edit</button>
+                                        <button onclick="deletePromo('${pc.id}')" class="text-red-600 hover:text-red-800">Delete</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p class="text-center text-gray-500 py-8">No promo codes found</p>';
+            } catch (error) {
+                console.error('Failed to load promo codes:', error);
+            }
+        }
+
+        function openPromoModal(promoId = null) {
+            document.getElementById('promo-modal').classList.remove('hidden');
+            const applicableToSelect = document.getElementById('promo-applicable-to');
+            const productsContainer = document.getElementById('promo-products-container');
+            
+            // Remove existing listeners
+            const newSelect = applicableToSelect.cloneNode(true);
+            applicableToSelect.parentNode.replaceChild(newSelect, applicableToSelect);
+            
+            newSelect.addEventListener('change', function() {
+                productsContainer.classList.toggle('hidden', this.value !== 'specific');
+            });
+            
+            if (promoId) {
+                document.getElementById('promo-modal-title').textContent = 'Edit Promo Code';
+                editPromo(promoId);
+            } else {
+                document.getElementById('promo-modal-title').textContent = 'Add Promo Code';
+                document.getElementById('promo-form').reset();
+                document.getElementById('promo-id').value = '';
+                productsContainer.classList.add('hidden');
+            }
+        }
+        
+        async function editPromo(id) {
+            try {
+                const promoCodes = await apiRequest('/admin/promo-codes');
+                const promo = promoCodes.find(p => p.id === id || p._id === id);
+                if (!promo) {
+                    alert('Promo code not found');
+                    return;
+                }
+                
+                document.getElementById('promo-id').value = promo.id || promo._id;
+                document.getElementById('promo-code').value = promo.code || '';
+                document.getElementById('promo-discount-type').value = promo.discountType || 'percentage';
+                document.getElementById('promo-discount-value').value = promo.discountValue || '';
+                document.getElementById('promo-max-discount').value = promo.maxDiscount || '';
+                document.getElementById('promo-applicable-to').value = promo.applicableTo || 'all';
+                document.getElementById('promo-product-ids').value = (promo.productIds || []).join(',');
+                document.getElementById('promo-min-purchase').value = promo.minPurchase || 0;
+                document.getElementById('promo-usage-limit').value = promo.usageLimit || '';
+                document.getElementById('promo-description').value = promo.description || '';
+                document.getElementById('promo-is-active').checked = promo.isActive !== false;
+                
+                if (promo.validFrom) {
+                    const fromDate = new Date(promo.validFrom);
+                    document.getElementById('promo-valid-from').value = fromDate.toISOString().slice(0, 16);
+                }
+                if (promo.validUntil) {
+                    const untilDate = new Date(promo.validUntil);
+                    document.getElementById('promo-valid-until').value = untilDate.toISOString().slice(0, 16);
+                }
+                
+                const productsContainer = document.getElementById('promo-products-container');
+                if (promo.applicableTo === 'specific') {
+                    productsContainer.classList.remove('hidden');
+                } else {
+                    productsContainer.classList.add('hidden');
+                }
+            } catch (error) {
+                alert('Failed to load promo code: ' + error.message);
+            }
+        }
+
+        function closePromoModal() {
+            document.getElementById('promo-modal').classList.add('hidden');
+        }
+
+        document.getElementById('promo-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const promoId = document.getElementById('promo-id').value;
+            const applicableTo = document.getElementById('promo-applicable-to').value;
+            const data = {
+                code: document.getElementById('promo-code').value.toUpperCase(),
+                discountType: document.getElementById('promo-discount-type').value,
+                discountValue: parseFloat(document.getElementById('promo-discount-value').value),
+                maxDiscount: document.getElementById('promo-max-discount').value ? parseFloat(document.getElementById('promo-max-discount').value) : undefined,
+                applicableTo: applicableTo,
+                productIds: applicableTo === 'specific' ? document.getElementById('promo-product-ids').value.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [],
+                minPurchase: parseFloat(document.getElementById('promo-min-purchase').value) || 0,
+                usageLimit: document.getElementById('promo-usage-limit').value ? parseInt(document.getElementById('promo-usage-limit').value) : undefined,
+                validFrom: document.getElementById('promo-valid-from').value ? new Date(document.getElementById('promo-valid-from').value) : undefined,
+                validUntil: document.getElementById('promo-valid-until').value ? new Date(document.getElementById('promo-valid-until').value) : undefined,
+                description: document.getElementById('promo-description').value,
+                isActive: document.getElementById('promo-is-active').checked
+            };
+            
+            try {
+                if (promoId) {
+                    await apiRequest(`/admin/promo-codes/${promoId}`, { method: 'PUT', body: JSON.stringify(data) });
+                } else {
+                    await apiRequest('/admin/promo-codes', { method: 'POST', body: JSON.stringify(data) });
+                }
+                closePromoModal();
+                loadPromoCodes();
+            } catch (error) {
+                alert('Failed to save promo code: ' + error.message);
+            }
+        });
+
+        async function deletePromo(id) {
+            if (confirm('Delete this promo code?')) {
+                try {
+                    await apiRequest(`/admin/promo-codes/${id}`, { method: 'DELETE' });
+                    loadPromoCodes();
+                } catch (error) {
+                    alert('Failed to delete promo code: ' + error.message);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
