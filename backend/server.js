@@ -71,9 +71,25 @@ mongoose.connect(MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 }).then(() => {
-    console.log('Connected to MongoDB');
+    console.log('✅ Connected to MongoDB successfully');
 }).catch(err => {
-    console.error('MongoDB connection error:', err);
+    console.error('❌ MongoDB connection error:', err);
+    console.error('Please check your MONGODB_URI environment variable');
+    // Don't exit - let the server start but log the error
+    // API routes will handle the error gracefully
+});
+
+// Handle MongoDB connection events
+mongoose.connection.on('error', (err) => {
+    console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+    console.warn('⚠️  MongoDB disconnected. Attempting to reconnect...');
+});
+
+mongoose.connection.on('reconnected', () => {
+    console.log('✅ MongoDB reconnected successfully');
 });
 
 // MongoDB Schemas
@@ -308,6 +324,14 @@ const authenticateAdmin = async (req, res, next) => {
 // Auth Routes
 app.post('/api/auth/signup', async (req, res) => {
     try {
+        if (!checkMongoConnection()) {
+            console.error('[API] MongoDB not connected for signup');
+            return res.status(503).json({ 
+                error: 'Database connection not available',
+                details: 'Please check server configuration'
+            });
+        }
+        
         const { email, password, displayName } = req.body;
         
         if (!email || !password) {
@@ -1422,15 +1446,31 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
     }
 });
 
+// Helper function to check MongoDB connection
+function checkMongoConnection() {
+    return mongoose.connection.readyState === 1; // 1 = connected
+}
+
 // ==================== PUBLIC PRODUCTS ENDPOINT ====================
 app.get('/api/products', async (req, res) => {
     try {
+        if (!checkMongoConnection()) {
+            console.error('[API] MongoDB not connected. Connection state:', mongoose.connection.readyState);
+            return res.status(503).json({ 
+                error: 'Database connection not available',
+                details: 'Please check server logs and MongoDB connection'
+            });
+        }
         const products = await Product.find().sort({ id: 1 });
         console.log(`[API] GET /api/products - Returning ${products.length} products`);
         res.json(products);
     } catch (error) {
         console.error('Get products error:', error);
-        res.status(500).json({ error: 'Failed to get products' });
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Failed to get products',
+            details: error.message 
+        });
     }
 });
 
@@ -1494,11 +1534,22 @@ app.post('/api/products/:id/view', async (req, res) => {
 
 app.get('/api/categories', async (req, res) => {
     try {
+        if (!checkMongoConnection()) {
+            console.error('[API] MongoDB not connected for categories');
+            return res.status(503).json({ 
+                error: 'Database connection not available',
+                details: 'Please check server configuration'
+            });
+        }
         const categories = await Category.find().sort({ name: 1 });
         res.json(categories);
     } catch (error) {
         console.error('Get categories error:', error);
-        res.status(500).json({ error: 'Failed to get categories' });
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            error: 'Failed to get categories',
+            details: error.message 
+        });
     }
 });
 
@@ -1845,6 +1896,28 @@ app.post('/api/promo-code/validate', async (req, res) => {
 // Public Hero data
 app.get('/api/hero', async (req, res) => {
     try {
+        if (!checkMongoConnection()) {
+            console.error('[API] MongoDB not connected for hero');
+            // Return default hero if DB not connected
+            return res.json({
+                title: 'The Art of Accessory.',
+                subtitle: 'HOLD Luxury in your HAND. Curated collections.',
+                brandTag: 'PRISM HOLD',
+                textAlign: 'center',
+                fontSize: 48,
+                titleFontSize: 48,
+                subtitleFontSize: 20,
+                fontWeight: 'normal',
+                textDecoration: 'none',
+                color: '#0f172a',
+                images: ['image.png'],
+                showContainer: true,
+                showButton: true,
+                showBrandTag: true,
+                showTitle: true,
+                showSubtitle: true
+            });
+        }
         let hero = await Hero.findOne().sort({ updatedAt: -1 });
         if (!hero) {
             hero = {
@@ -1877,7 +1950,23 @@ app.get('/api/hero', async (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: 'Server is running' });
+    const mongoStatus = checkMongoConnection() ? 'connected' : 'disconnected';
+    const mongoState = mongoose.connection.readyState; // 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
+    res.json({ 
+        status: 'ok', 
+        message: 'Server is running',
+        mongodb: {
+            status: mongoStatus,
+            readyState: mongoState,
+            connected: checkMongoConnection()
+        },
+        environment: {
+            nodeEnv: process.env.NODE_ENV || 'development',
+            port: PORT,
+            hasMongoUri: !!MONGODB_URI,
+            hasJwtSecret: !!JWT_SECRET
+        }
+    });
 });
 
 app.listen(PORT, () => {
