@@ -2,6 +2,39 @@
 
 This project has been migrated from Firebase to MongoDB with a Node.js/Express backend.
 
+## 🚀 Quick Links
+
+- **[Quick Start Guide](./QUICK_START.md)** - Get started in 5 minutes
+- **[Complete Deployment Guide](./DEPLOYMENT.md)** - Step-by-step deployment instructions for beginners
+- **[Deployment Checklist](./DEPLOYMENT_CHECKLIST.md)** - Don't miss any steps!
+
+## 📁 Project Structure
+
+```
+prismhold/
+├── backend/                 # Backend/server code
+│   ├── server.js           # Main Express server
+│   ├── create-admin.js     # Admin user creation script
+│   ├── uploads/            # Uploaded files storage
+│   └── README.md           # Backend documentation
+│
+├── frontend/               # Frontend/client code
+│   ├── public/            # Public-facing website
+│   │   ├── index.html     # Main customer website
+│   │   └── image.png      # Default images
+│   ├── admin/             # Admin panel
+│   │   └── admin.html     # Admin dashboard
+│   └── README.md          # Frontend documentation
+│
+├── .env.example           # Environment variables template
+├── .gitignore            # Git ignore rules
+├── package.json          # Dependencies and scripts
+├── Procfile              # Deployment configuration
+├── README.md             # This file
+├── DEPLOYMENT.md         # Deployment guide
+└── QUICK_START.md        # Quick start guide
+```
+
 ## Prerequisites
 
 - Node.js (v14 or higher)
