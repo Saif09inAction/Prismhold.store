@@ -30,8 +30,8 @@ logs/
 # Build files (keep frontend/dist for production CSS)
 # dist/
 build/
-# But ignore source files
-frontend/src/
+# But allow Tailwind source file (needed for build)
+!frontend/src/input.css
 
 # Temporary files
 *.tmp
