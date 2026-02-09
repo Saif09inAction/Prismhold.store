@@ -1,5 +1,5 @@
 {
-  "name": "prismhold-mongodb",
+  "name": "prismhold_store",
   "version": "1.0.0",
   "description": "Prism Hold e-commerce with MongoDB backend",
   "main": "backend/server.js",
