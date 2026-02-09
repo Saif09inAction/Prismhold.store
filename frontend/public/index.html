@@ -342,9 +342,7 @@
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
         }
     </style>
-    <script>
-        tailwind.config = { theme: { extend: { colors: { 'primary': '#1a1a1a', 'secondary': '#ffffff', 'accent': '#c5a065', 'accent-light': '#e0cba8', 'bg-main': '#f9f9f9' }, screens: { 'xs': '475px' } } } }
-    </script>
+    <!-- Tailwind config removed - using compiled CSS file instead of CDN -->
 </head>
 <body class="min-h-screen bg-bg-main text-primary">
 
@@ -560,6 +558,12 @@
             lucide.createIcons();
         }
 
+        // Global variables
+        let products = []; // Initialize products array globally
+        let heroData = {};
+        let heroImages = [];
+        let heroRotationInterval = null;
+
         // Load hero content
         async function loadHeroContent() {
             try {
@@ -568,7 +572,7 @@
                 const data = await res.json();
                 console.log('[Hero] Loaded data from API:', data);
                 heroData = data;
-                heroImages = Array.isArray(data.images) && data.images.length ? data.images : ['image.png'];
+                heroImages = Array.isArray(data.images) && data.images.length ? data.images : ['/image.png'];
                 applyHeroStyles(data);
                 startHeroRotation();
             } catch (error) {
@@ -584,7 +588,7 @@
                     fontWeight: 'normal',
                     textDecoration: 'none',
                     color: '#0f172a',
-                    images: ['image.png'],
+                    images: ['/image.png'],
                     showContainer: true,
                     showButton: true,
                     showBrandTag: true,
@@ -695,7 +699,7 @@
             const heroSection = document.getElementById('home');
             if (!heroSection) return;
             if (!heroImages || !heroImages.length) {
-                heroImages = ['image.png'];
+                heroImages = ['/image.png'];
             }
             if (heroRotationInterval) {
                 clearInterval(heroRotationInterval);
@@ -2840,7 +2844,8 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => { 
-            filterProducts(); 
+            // Don't call filterProducts() here - wait for products to load
+            // filterProducts() will be called after loadProducts() completes
             renderCart(); 
             lucide.createIcons();
             
