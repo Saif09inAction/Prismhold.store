@@ -124,7 +124,7 @@
         
         /* Hero Section */
         .hero-bg { 
-            background-image: url('/image.png'); 
+            background-image: url('image.png'); 
             background-size: cover; 
             background-position: center; 
             position: relative;
@@ -342,7 +342,6 @@
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
         }
     </style>
-    <!-- Tailwind config removed - using compiled CSS file instead of CDN -->
 </head>
 <body class="min-h-screen bg-bg-main text-primary">
 
@@ -558,12 +557,6 @@
             lucide.createIcons();
         }
 
-        // Global variables
-        let products = []; // Initialize products array globally
-        let heroData = {};
-        let heroImages = [];
-        let heroRotationInterval = null;
-
         // Load hero content
         async function loadHeroContent() {
             try {
@@ -572,7 +565,7 @@
                 const data = await res.json();
                 console.log('[Hero] Loaded data from API:', data);
                 heroData = data;
-                heroImages = Array.isArray(data.images) && data.images.length ? data.images : ['/image.png'];
+                heroImages = Array.isArray(data.images) && data.images.length ? data.images : ['image.png'];
                 applyHeroStyles(data);
                 startHeroRotation();
             } catch (error) {
@@ -588,7 +581,7 @@
                     fontWeight: 'normal',
                     textDecoration: 'none',
                     color: '#0f172a',
-                    images: ['/image.png'],
+                    images: ['image.png'],
                     showContainer: true,
                     showButton: true,
                     showBrandTag: true,
@@ -691,7 +684,7 @@
             }
 
             // Set first background immediately
-            const firstImage = (heroImages && heroImages.length) ? heroImages[0] : '/image.png';
+            const firstImage = (heroImages && heroImages.length) ? heroImages[0] : 'image.png';
             heroSection.style.backgroundImage = `url('${firstImage}')`;
         }
 
@@ -699,7 +692,7 @@
             const heroSection = document.getElementById('home');
             if (!heroSection) return;
             if (!heroImages || !heroImages.length) {
-                heroImages = ['/image.png'];
+                heroImages = ['image.png'];
             }
             if (heroRotationInterval) {
                 clearInterval(heroRotationInterval);
@@ -1500,6 +1493,7 @@
         let userOrders = [];
         let authMode = 'login';
         let currentCategory = 'all';
+        let products = []; // Initialize products array to prevent undefined errors
         const businessPhone = "917257857609"; 
         const formatCurrency = (amount) => `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0, minimumFractionDigits: 0 })}`;
 
@@ -2844,8 +2838,7 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => { 
-            // Don't call filterProducts() here - wait for products to load
-            // filterProducts() will be called after loadProducts() completes
+            filterProducts(); 
             renderCart(); 
             lucide.createIcons();
             

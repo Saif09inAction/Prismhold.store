@@ -71,18 +71,29 @@ app.get('/admin', (req, res) => {
 });
 
 
-// MongoDB Connection
-mongoose.connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
-    console.log('✅ Connected to MongoDB successfully');
-}).catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    console.error('Please check your MONGODB_URI environment variable');
-    // Don't exit - let the server start but log the error
-    // API routes will handle the error gracefully
-});
+// MongoDB Connection with retry logic for Vercel
+let mongooseConnected = false;
+
+async function connectMongoDB() {
+    try {
+        await mongoose.connect(MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+            socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+        });
+        mongooseConnected = true;
+        console.log('✅ Connected to MongoDB successfully');
+    } catch (err) {
+        mongooseConnected = false;
+        console.error('❌ MongoDB connection error:', err.message);
+        console.error('Please check your MONGODB_URI environment variable');
+        // Retry connection after 2 seconds
+        setTimeout(connectMongoDB, 2000);
+    }
+}
+
+connectMongoDB();
 
 // Handle MongoDB connection events
 mongoose.connection.on('error', (err) => {
@@ -1453,7 +1464,12 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
 
 // Helper function to check MongoDB connection
 function checkMongoConnection() {
-    return mongoose.connection.readyState === 1; // 1 = connected
+    const isConnected = mongoose.connection.readyState === 1; // 1 = connected
+    if (!isConnected && !mongooseConnected) {
+        // Try to reconnect if not connected
+        connectMongoDB();
+    }
+    return isConnected;
 }
 
 // ==================== PUBLIC PRODUCTS ENDPOINT ====================
