@@ -124,7 +124,7 @@
         
         /* Hero Section */
         .hero-bg { 
-            background-image: url('image.png'); 
+            background-image: url('/image.png'); 
             background-size: cover; 
             background-position: center; 
             position: relative;
@@ -691,7 +691,7 @@
             }
 
             // Set first background immediately
-            const firstImage = (heroImages && heroImages.length) ? heroImages[0] : 'image.png';
+            const firstImage = (heroImages && heroImages.length) ? heroImages[0] : '/image.png';
             heroSection.style.backgroundImage = `url('${firstImage}')`;
         }
 
