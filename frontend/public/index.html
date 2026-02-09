@@ -1405,12 +1405,13 @@
                     <div class="w-full md:w-1/2">
                         <div class="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl overflow-hidden mb-4 shadow-lg border-2 border-gray-100 relative">
                             <img id="product-detail-image" src="" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" alt="Product">
-                            <div id="product-detail-image-nav" class="absolute inset-0 flex items-center justify-between p-4 opacity-0 hover:opacity-100 transition-opacity">
-                                <button id="product-detail-prev" onclick="changeProductImage(-1)" class="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition">
-                                    <i data-lucide="chevron-left" class="w-6 h-6 text-gray-700"></i>
+                            <!-- Navigation arrows - smaller and positioned at edges on mobile -->
+                            <div id="product-detail-image-nav" class="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex items-center justify-between px-1 md:px-4 md:inset-0 md:opacity-0 md:hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                <button id="product-detail-prev" onclick="changeProductImage(-1); event.stopPropagation();" class="bg-white/95 backdrop-blur-md rounded-full p-1.5 md:p-2 shadow-lg hover:bg-white transition pointer-events-auto ml-1 md:ml-0">
+                                    <i data-lucide="chevron-left" class="w-4 h-4 md:w-6 md:h-6 text-gray-700"></i>
                                 </button>
-                                <button id="product-detail-next" onclick="changeProductImage(1)" class="bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-lg hover:bg-white transition">
-                                    <i data-lucide="chevron-right" class="w-6 h-6 text-gray-700"></i>
+                                <button id="product-detail-next" onclick="changeProductImage(1); event.stopPropagation();" class="bg-white/95 backdrop-blur-md rounded-full p-1.5 md:p-2 shadow-lg hover:bg-white transition pointer-events-auto mr-1 md:mr-0">
+                                    <i data-lucide="chevron-right" class="w-4 h-4 md:w-6 md:h-6 text-gray-700"></i>
                                 </button>
                             </div>
                         </div>
@@ -2032,9 +2033,16 @@
             // Show/hide navigation buttons
             const navDiv = document.getElementById('product-detail-image-nav');
             if (currentProductImages.length > 1) {
-                navDiv.classList.remove('opacity-0');
+                // On mobile, always show arrows (no hover needed)
+                // On desktop, show on hover
+                if (window.innerWidth < 768) {
+                    navDiv.classList.remove('md:opacity-0', 'md:hover:opacity-100');
+                    navDiv.classList.add('opacity-100');
+                } else {
+                    navDiv.classList.add('md:opacity-0', 'md:hover:opacity-100');
+                }
             } else {
-                navDiv.classList.add('opacity-0');
+                navDiv.classList.add('opacity-0', 'md:opacity-0');
             }
             
             // Render thumbnails
