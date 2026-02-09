@@ -53,6 +53,8 @@ const UPLOADS_PATH = path.join(__dirname, 'uploads');
 
 // Serve static files from frontend/public (images, CSS, JS, etc.)
 app.use(express.static(FRONTEND_PUBLIC_PATH));
+// Serve compiled Tailwind CSS from frontend/dist
+app.use('/dist', express.static(path.join(__dirname, '../frontend/dist')));
 app.use('/uploads', express.static(UPLOADS_PATH));
 
 // Serve index.html for root route

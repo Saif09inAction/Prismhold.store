@@ -10,9 +10,19 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
-    "create-admin": "node backend/create-admin.js"
+    "create-admin": "node backend/create-admin.js",
+    "update-admin": "node backend/update-admin.js",
+    "build": "npm run build-css",
+    "build-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --minify",
+    "watch-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --watch",
+    "postinstall": "npm run build-css"
   },
-  "keywords": ["ecommerce", "mongodb", "express", "razorpay"],
+  "keywords": [
+    "ecommerce",
+    "mongodb",
+    "express",
+    "razorpay"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -27,6 +37,9 @@
     "razorpay": "^2.9.6"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "autoprefixer": "^10.4.24",
+    "nodemon": "^3.0.2",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.0"
   }
 }

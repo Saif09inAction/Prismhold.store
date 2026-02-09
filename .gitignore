@@ -27,9 +27,11 @@ Thumbs.db
 logs/
 *.log
 
-# Build files
-dist/
+# Build files (keep frontend/dist for production CSS)
+# dist/
 build/
+# But ignore source files
+frontend/src/
 
 # Temporary files
 *.tmp
