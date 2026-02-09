@@ -35,7 +35,7 @@ NODE_ENV=production
 2. Sign up/Login with GitHub
 3. Click "Add New Project"
 4. Import your repository: `Saif09inAction/Prismhold.store`
-5. **Project Name**: Use `prismhold-store` or `prismhold_store` (no spaces, no special characters)
+5. **Project Name**: Use `prismhold_store` (with underscore, NO hyphens - Vercel doesn't allow hyphens!)
 
 ### Step 2: Configure Project Settings
 
