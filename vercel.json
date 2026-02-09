@@ -12,16 +12,23 @@
       "dest": "backend/server.js"
     },
     {
+      "src": "/dist/(.*)",
+      "dest": "/frontend/dist/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/image.png",
+      "dest": "/frontend/public/image.png"
+    },
+    {
       "src": "/admin",
       "dest": "backend/server.js"
     },
     {
-      "src": "/dist/(.*)",
-      "dest": "frontend/dist/$1"
-    },
-    {
       "src": "/uploads/(.*)",
-      "dest": "backend/uploads/$1"
+      "dest": "backend/server.js"
     },
     {
       "src": "/(.*)",
