@@ -1305,9 +1305,9 @@
             </div>
             <div class="p-6 border-t border-gray-200 bg-gray-50">
                 <form id="contact-form" onsubmit="sendContactMessage(event)" class="flex space-x-3">
-                    <input type="text" id="contact-message-input" placeholder="Type your message..." required class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none bg-white text-gray-800">
-                    <button type="submit" class="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition font-medium shadow-md hover:shadow-lg flex items-center justify-center min-w-[60px]">
-                        <i data-lucide="send" class="w-5 h-5"></i>
+                    <input type="text" id="contact-message-input" placeholder="Type your message..." required class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 outline-none bg-white text-gray-900 placeholder-gray-400">
+                    <button type="submit" style="background-color: #2563eb; color: white;" class="px-6 py-3 text-white rounded-xl hover:opacity-90 transition font-medium shadow-lg hover:shadow-xl flex items-center justify-center min-w-[60px]">
+                        <i data-lucide="send" class="w-5 h-5" style="color: white;"></i>
                     </button>
                 </form>
             </div>
@@ -2245,11 +2245,14 @@
             container.innerHTML = messages.map(msg => {
                 const isAdmin = msg.fromAdmin;
                 const date = new Date(msg.createdAt).toLocaleString();
+                const userBgColor = isAdmin ? '#f3f4f6' : '#2563eb'; // gray-100 for admin, blue-600 for user
+                const userTextColor = isAdmin ? '#1f2937' : '#ffffff'; // gray-800 for admin, white for user
+                const timestampColor = isAdmin ? '#6b7280' : 'rgba(255, 255, 255, 0.9)'; // gray-500 for admin, white/90 for user
                 return `
                     <div class="flex ${isAdmin ? 'justify-start' : 'justify-end'}">
-                        <div class="max-w-[70%] ${isAdmin ? 'bg-gray-100 text-gray-800' : 'bg-blue-500 text-white'} rounded-2xl px-4 py-3 shadow-sm">
-                            <p class="text-sm ${isAdmin ? 'text-gray-800' : 'text-white'}">${msg.message}</p>
-                            <p class="text-xs mt-1 ${isAdmin ? 'text-gray-500' : 'text-white/80'}">${date}</p>
+                        <div class="max-w-[70%] rounded-2xl px-4 py-3 shadow-sm" style="background-color: ${userBgColor};">
+                            <p class="text-sm" style="color: ${userTextColor};">${msg.message}</p>
+                            <p class="text-xs mt-1" style="color: ${timestampColor};">${date}</p>
                         </div>
                     </div>
                 `;
