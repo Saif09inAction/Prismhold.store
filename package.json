@@ -16,7 +16,8 @@
     "build": "npm run build-css",
     "build-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --minify",
     "watch-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --watch",
-    "postinstall": "npm run build-css"
+    "postinstall": "npm run build-css",
+    "vercel-build": "npm run build-css"
   },
   "keywords": [
     "ecommerce",
