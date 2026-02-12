@@ -902,12 +902,12 @@
                 <div id="auth-buttons-desktop"></div>
                 <button onclick="toggleCart()" class="relative p-2.5 rounded-full hover:bg-gray-100 transition-all duration-200 group active:scale-95" aria-label="Shopping Cart">
                     <i data-lucide="shopping-bag" class="w-5 h-5 text-primary group-hover:text-accent transition-colors"></i>
-                    <span id="cart-count-desktop" class="absolute top-0 right-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold leading-none text-white bg-accent rounded-full shadow-lg ring-2 ring-white">0</span>
+                    <span id="cart-count-desktop" class="absolute top-0 right-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold leading-none text-white rounded-full shadow-lg ring-2 ring-white" style="background-color: #dc2626;">0</span>
                 </button>
             </div>
             <button onclick="toggleCart()" class="md:hidden relative p-2.5 -mr-2 text-primary hover:bg-gray-100 rounded-full transition-all duration-200 active:scale-95" aria-label="Shopping Cart">
                 <i data-lucide="shopping-bag" class="w-6 h-6"></i>
-                <span id="cart-count-mobile" class="absolute top-1 right-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-accent rounded-full border-2 border-white shadow-lg">0</span>
+                <span id="cart-count-mobile" class="absolute top-1 right-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white rounded-full border-2 border-white shadow-lg" style="background-color: #dc2626;">0</span>
             </button>
         </div>
     </header>
@@ -925,7 +925,7 @@
         <button onclick="toggleCart()" class="mobile-nav-item flex flex-col items-center text-gray-400 hover:text-primary transition-all duration-200 group relative active:scale-95">
             <i data-lucide="shopping-bag" class="w-6 h-6 mb-1 group-hover:scale-110 transition-transform"></i>
             <span class="text-[10px] font-medium">Cart</span>
-            <span id="cart-count-bottom" class="absolute top-0 right-3 w-2.5 h-2.5 bg-accent rounded-full hidden animate-pulse shadow-lg ring-2 ring-white"></span>
+            <span id="cart-count-bottom" class="absolute top-0 right-3 w-2.5 h-2.5 rounded-full hidden animate-pulse shadow-lg ring-2 ring-white" style="background-color: #dc2626;"></span>
         </button>
         <button onclick="handleMobileProfileClick()" class="mobile-nav-item flex flex-col items-center text-gray-400 hover:text-primary transition-all duration-200 group active:scale-95">
             <i data-lucide="user" class="w-6 h-6 mb-1 group-hover:scale-110 transition-transform"></i>
