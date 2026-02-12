@@ -359,6 +359,21 @@
         const API_BASE = window.API_BASE;
         const API_BASE_URL = `${API_BASE}/api`;
         
+        // Convert Google Drive share links to direct image URLs
+        function toDirectImageUrl(url) {
+            if (!url || typeof url !== 'string') return url || '';
+            if (url.includes('drive.google.com/file/d/')) {
+                const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+                if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+            }
+            if (url.includes('drive.google.com') && url.includes('id=')) {
+                const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+            }
+            return url;
+        }
+        function getProductImage(p) { return toDirectImageUrl((p?.images?.length) ? p.images[0] : (p?.image || '')) || ''; }
+        
         // Helper function to get auth token
         function getAuthToken() {
             return localStorage.getItem('authToken');
@@ -463,7 +478,7 @@
             if (!container) return;
             
             container.innerHTML = categories.length ? categories.map(cat => {
-                const coverImage = cat.coverImage || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 400\'%3E%3Crect fill=\'%23f3f4f6\' width=\'400\' height=\'400\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'sans-serif\' font-size=\'18\' fill=\'%239ca3af\'%3E${cat.name}%3C/text%3E%3C/svg%3E';
+                const coverImage = cat.coverImage ? toDirectImageUrl(cat.coverImage) : 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 400\'%3E%3Crect fill=\'%23f3f4f6\' width=\'400\' height=\'400\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' font-family=\'sans-serif\' font-size=\'18\' fill=\'%239ca3af\'%3E${cat.name}%3C/text%3E%3C/svg%3E';
                 return `
                     <div class="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group" onclick="setCategory('${cat.name}'); document.getElementById('shop').scrollIntoView({ behavior: 'smooth' });">
                         <div class="aspect-[4/3] bg-gray-100 relative overflow-hidden">
@@ -493,7 +508,7 @@
                 }).slice(0, 8); // Show 8 most recent
                 
                 container.innerHTML = newProducts.length ? newProducts.map(p => {
-                    const productImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+                    const productImage = getProductImage(p);
                     return `
                         <div class="bg-white rounded-2xl overflow-hidden product-card-modern group cursor-pointer" onclick="openProductDetail(${p.id})">
                             <div class="product-image-wrapper aspect-square bg-gray-100 relative">
@@ -563,7 +578,7 @@
                 const data = await res.json();
                 console.log('[Hero] Loaded data from API:', data);
                 heroData = data;
-                heroImages = Array.isArray(data.images) && data.images.length ? data.images : ['image.png'];
+                heroImages = Array.isArray(data.images) && data.images.length ? data.images.map(toDirectImageUrl) : ['image.png'];
                 applyHeroStyles(data);
                 startHeroRotation();
             } catch (error) {
@@ -767,7 +782,7 @@
                         </div>
                         <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6 lg:gap-8">
                             ${categoryProducts.map(p => {
-                                const productImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+                                const productImage = getProductImage(p);
                                 return `
                                 <div class="bg-white rounded-2xl overflow-hidden product-card-modern group cursor-pointer" onclick="openProductDetail(${p.id})">
                                     <div class="product-image-wrapper aspect-square bg-gray-100 relative">
@@ -814,7 +829,7 @@
                     const recommendations = await response.json();
                     if (recommendations.length > 0) {
                         container.innerHTML = recommendations.map(p => {
-                            const productImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+                            const productImage = getProductImage(p);
                             return `
                             <div class="bg-white rounded-2xl overflow-hidden product-card-modern group cursor-pointer" onclick="openProductDetail(${p.id})">
                                 <div class="product-image-wrapper aspect-square bg-gray-100 relative">
@@ -1383,21 +1398,23 @@
     <!-- Product Added Notification Container -->
     <div id="product-notification-container" class="fixed top-20 right-4 z-[85] space-y-3 w-80 max-w-[calc(100vw-2rem)] pointer-events-none"></div>
 
-    <!-- Image Viewer Popup (zoom, close) -->
-    <div id="image-viewer-popup" class="fixed inset-0 bg-black/90 z-[95] hidden flex flex-col items-center justify-center" onclick="closeImagePopup(event)">
-        <div class="absolute top-4 right-4 flex gap-2 z-10" onclick="event.stopPropagation()">
-            <button type="button" onclick="zoomOutImage()" class="p-2.5 bg-white/90 hover:bg-white rounded-full shadow-lg transition" aria-label="Zoom out">
-                <i data-lucide="zoom-out" class="w-5 h-5 text-gray-700"></i>
-            </button>
-            <button type="button" onclick="zoomInImage()" class="p-2.5 bg-white/90 hover:bg-white rounded-full shadow-lg transition" aria-label="Zoom in">
-                <i data-lucide="zoom-in" class="w-5 h-5 text-gray-700"></i>
-            </button>
-            <button type="button" onclick="closeImagePopup()" class="p-2.5 bg-white/90 hover:bg-white rounded-full shadow-lg transition" aria-label="Close">
-                <i data-lucide="x" class="w-5 h-5 text-gray-700"></i>
-            </button>
-        </div>
-        <div class="overflow-auto w-full h-full flex items-center justify-center p-4 pt-20" onclick="closeImagePopup(event)">
-            <img id="image-viewer-img" src="" alt="Product" class="max-w-full max-h-[85vh] object-contain transition-transform duration-200 select-none" style="transform-origin: center;" onclick="event.stopPropagation()" draggable="false">
+    <!-- Image Viewer Popup - modal style (centered, in front, like Amazon) -->
+    <div id="image-viewer-popup" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] hidden flex items-center justify-center p-4" onclick="closeImagePopup(event)">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative animate-scale-in" onclick="event.stopPropagation()">
+            <div class="absolute top-4 right-4 flex gap-2 z-10">
+                <button type="button" onclick="zoomOutImage()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Zoom out">
+                    <i data-lucide="zoom-out" class="w-5 h-5 text-gray-700"></i>
+                </button>
+                <button type="button" onclick="zoomInImage()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Zoom in">
+                    <i data-lucide="zoom-in" class="w-5 h-5 text-gray-700"></i>
+                </button>
+                <button type="button" onclick="closeImagePopup()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Close">
+                    <i data-lucide="x" class="w-5 h-5 text-gray-700"></i>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto flex items-center justify-center p-6 pt-16 min-h-[200px]">
+                <img id="image-viewer-img" src="" alt="Product" class="max-w-full max-h-[70vh] object-contain transition-transform duration-200 select-none" style="transform-origin: center;" onclick="event.stopPropagation()" draggable="false">
+            </div>
         </div>
     </div>
 
@@ -1558,7 +1575,7 @@
                 return;
             }
             list.innerHTML = filtered.length ? filtered.map(p => {
-                const productImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+                const productImage = getProductImage(p);
                 return `
                 <div class="bg-white rounded-2xl overflow-hidden product-card-modern group cursor-pointer" onclick="openProductDetail(${p.id})">
                     <div class="product-image-wrapper aspect-square bg-gray-100 relative">
@@ -1818,7 +1835,7 @@
             const isNewItem = !cartItems.find(x => x.id === product.id);
             const item = cartItems.find(x => x.id === product.id);
             const quantity = item ? item.quantity : 1;
-            const productImage = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
+            const productImage = getProductImage(product);
             
             notification.className = 'product-added-notification bg-white rounded-xl shadow-2xl p-4 border border-gray-100 flex items-center space-x-4 pointer-events-auto';
             notification.innerHTML = `
@@ -1906,7 +1923,7 @@
                 </div>
                 ${cartItems.map(i => {
                     const isSelected = selectedCartItems.has(i.id);
-                    const itemImage = (i.images && i.images.length > 0) ? i.images[0] : (i.image || '');
+                    const itemImage = getProductImage(i);
                     return `<div class="flex items-start p-4 bg-white rounded-2xl mb-4 border-2 ${isSelected ? 'border-accent shadow-lg bg-accent/5' : 'border-gray-100'} shadow-sm transition-all duration-300 hover:shadow-md">
                         <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleCartItemSelection(${i.id})" class="mt-1 w-5 h-5 accent-accent rounded border-gray-300 cursor-pointer mr-4 flex-shrink-0 transition-all">
                         <img src="${itemImage}" class="w-20 h-20 object-cover rounded-xl mr-4 flex-shrink-0 shadow-sm border border-gray-100" alt="${i.name}">
@@ -1954,7 +1971,7 @@
             
             list.innerHTML = selectedItems.map(i => {
                 const t = i.price * i.quantity;
-                const itemImage = (i.images && i.images.length > 0) ? i.images[0] : (i.image || '');
+                const itemImage = getProductImage(i);
                 return `<div class="flex justify-between items-center py-4 border-b border-dashed border-gray-200 last:border-0 hover:bg-gray-50/50 rounded-lg px-2 -mx-2 transition-colors">
                             <div class="flex items-center flex-1 min-w-0">
                                 <img src="${itemImage}" class="w-16 h-16 rounded-xl object-cover mr-4 border-2 border-gray-100 shadow-sm flex-shrink-0" alt="${i.name}">
@@ -2037,7 +2054,7 @@
             const modal = document.getElementById('product-detail-modal');
             
             // Get product images
-            currentProductImages = (product.images && product.images.length > 0) ? product.images : (product.image ? [product.image] : []);
+            currentProductImages = (product.images && product.images.length > 0) ? product.images.map(toDirectImageUrl) : (product.image ? [toDirectImageUrl(product.image)] : []);
             currentImageIndex = 0;
             
             // Set product details
@@ -2141,6 +2158,7 @@
                 src = document.getElementById('product-detail-image').src || (currentProductImages && currentProductImages[currentImageIndex]) || '';
             }
             if (!src) return;
+            src = toDirectImageUrl(src);
             const popup = document.getElementById('image-viewer-popup');
             const img = document.getElementById('image-viewer-img');
             img.src = src;
@@ -2200,7 +2218,7 @@
             }
             
             container.innerHTML = recommendations.map(p => {
-                const productImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+                const productImage = getProductImage(p);
                 return `
                 <div class="bg-white rounded-xl overflow-hidden product-card-modern group cursor-pointer" onclick="openProductDetail(${p.id})">
                     <div class="product-image-wrapper aspect-square bg-gray-100 relative">
