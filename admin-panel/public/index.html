@@ -1726,7 +1726,7 @@
         }
 
         // Currency formatter
-        const formatCurrency = (amount) => `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0, minimumFractionDigits: 0 })}`;
+        const formatCurrency = (amount) => '₹' + (amount ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0, minimumFractionDigits: 0 });
 
         // Orders
         let allOrders = [];
@@ -2253,8 +2253,6 @@
                 console.error('Failed to load promo codes:', error);
             }
         }
-
-        const formatCurrency = (n) => '₹' + (n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
         async function loadEarnings() {
             try {
