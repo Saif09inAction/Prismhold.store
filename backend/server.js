@@ -32,8 +32,7 @@ const razorpay = new Razorpay({
 const app = express();
 const PORT = process.env.PORT;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-// Render + MongoDB Atlas: set MONGO_URI (or MONGODB_URI) in Render environment
-const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+// MongoDB Atlas: set MONGO_URI in Render environment
 
 if (!PORT) {
     console.warn('PORT not set; defaulting to 3000 for local run');
@@ -41,16 +40,11 @@ if (!PORT) {
 const PORT_NUM = Number(PORT) || 3000;
 
 // CORS: allow frontend (Vercel) and local dev
-const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,https://YOUR_FRONTEND_DOMAIN.vercel.app')
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean);
 app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        if (corsOrigins.some(o => o === origin)) return callback(null, true);
-        callback(null, false);
-    },
+    origin: [
+        "http://localhost:3000",
+        "https://your-frontend-name.vercel.app"
+    ],
     credentials: true
 }));
 app.use(express.json());
@@ -75,12 +69,12 @@ app.get('/', (req, res) => {
 let mongooseConnected = false;
 
 async function connectMongoDB() {
-    if (!MONGO_URI) {
-        console.error('MONGO_URI or MONGODB_URI must be set');
+    if (!process.env.MONGO_URI) {
+        console.error('MONGO_URI must be set');
         return;
     }
     try {
-        await mongoose.connect(MONGO_URI, {
+        await mongoose.connect(process.env.MONGO_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
@@ -91,7 +85,7 @@ async function connectMongoDB() {
     } catch (err) {
         mongooseConnected = false;
         console.error('❌ MongoDB connection error:', err.message);
-        console.error('Please check your MONGO_URI / MONGODB_URI environment variable');
+        console.error('Please check your MONGO_URI environment variable');
         // Retry connection after 2 seconds
         setTimeout(connectMongoDB, 2000);
     }
@@ -1988,7 +1982,7 @@ app.get('/api/health', (req, res) => {
         environment: {
             nodeEnv: process.env.NODE_ENV || 'development',
             port: PORT_NUM,
-            hasMongoUri: !!MONGO_URI,
+            hasMongoUri: !!process.env.MONGO_URI,
             hasJwtSecret: !!JWT_SECRET
         }
     });
