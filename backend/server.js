@@ -45,7 +45,8 @@ const allowedOrigins = [
     "https://prismhold-store-mqkr.vercel.app",
     "https://prismhold-admin.vercel.app",
     "https://prismhold.store",
-    "https://www.prismhold.store"
+    "https://www.prismhold.store",
+    "https://prismhold-store-2.onrender.com"
 ];
 
 app.use(cors({
@@ -54,10 +55,10 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
-        // Allow any Vercel deployment (*.vercel.app)
+        // Allow any Vercel (*.vercel.app) or Render (*.onrender.com) deployment
         try {
             const url = new URL(origin);
-            if (url.hostname.endsWith('.vercel.app')) {
+            if (url.hostname.endsWith('.vercel.app') || url.hostname.endsWith('.onrender.com')) {
                 return callback(null, true);
             }
         } catch (e) { /* ignore */ }
