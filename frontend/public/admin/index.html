@@ -617,9 +617,9 @@
         </div>
     </div>
 
+    <script src="/config/api.js"></script>
     <script>
-        // API: Backend on Render. Replace YOUR_BACKEND_DOMAIN with your Render service host.
-        const API_BASE = "https://YOUR_BACKEND_DOMAIN.onrender.com";
+        const API_BASE = window.API_BASE;
         const API_BASE_URL = `${API_BASE}/api`;
         let adminToken = localStorage.getItem('adminToken');
         let currentSection = 'dashboard-section';

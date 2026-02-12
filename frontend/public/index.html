@@ -345,10 +345,10 @@
 </head>
 <body class="min-h-screen bg-bg-main text-primary">
 
-    <!-- MongoDB API Client -->
+    <!-- API config (load first) -->
+    <script src="/config/api.js"></script>
     <script>
-        // API: Backend on Render. Replace YOUR_BACKEND_DOMAIN with your Render service host (e.g. prismhold-api).
-        const API_BASE = "https://YOUR_BACKEND_DOMAIN.onrender.com";
+        const API_BASE = window.API_BASE;
         const API_BASE_URL = `${API_BASE}/api`;
         
         // Helper function to get auth token
