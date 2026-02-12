@@ -114,6 +114,14 @@
                     <i data-lucide="tag"></i>
                     <span>Promo Codes</span>
                 </button>
+                <button onclick="showSection('earnings-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3">
+                    <i data-lucide="trending-up"></i>
+                    <span>Earnings</span>
+                </button>
+                <button onclick="showSection('settings-section')" class="sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center space-x-3">
+                    <i data-lucide="settings"></i>
+                    <span>Settings</span>
+                </button>
             </nav>
             <div class="sticky bottom-0 bg-white border-t border-gray-200 p-4 mt-auto">
                 <button onclick="logout()" class="w-full bg-red-50 text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-red-100 transition flex items-center justify-center space-x-2">
@@ -438,6 +446,83 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Earnings Section -->
+            <div id="earnings-section" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-4 lg:mb-6">Earnings</h2>
+                <div id="earnings-container" class="space-y-6">
+                    <!-- Stats cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                            <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">Gross Revenue</p>
+                            <p id="earnings-gross" class="text-2xl font-bold text-gray-900">₹0</p>
+                            <p class="text-xs text-gray-400 mt-1">Product sales only</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                            <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">Delivery Collected</p>
+                            <p id="earnings-delivery" class="text-2xl font-bold text-blue-600">₹0</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                            <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">Total Quantity Sold</p>
+                            <p id="earnings-qty" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                            <p class="text-sm text-gray-500 uppercase tracking-wider mb-1">Total Orders</p>
+                            <p id="earnings-orders" class="text-2xl font-bold text-gray-900">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4">Profit Calculation</h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-600">Total Revenue (Gross + Delivery)</span>
+                                <span id="earnings-total-rev" class="font-semibold">₹0</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-600">Razorpay Fee (<span id="earnings-rp-pct">0</span>%)</span>
+                                <span id="earnings-rp-exp" class="font-semibold text-red-600">-₹0</span>
+                            </div>
+                            <div class="flex justify-between py-2 border-b border-gray-100">
+                                <span class="text-gray-600">Delivery Charges (₹<span id="earnings-del-pc">0</span>/order)</span>
+                                <span id="earnings-del-exp" class="font-semibold text-red-600">-₹0</span>
+                            </div>
+                            <div class="flex justify-between py-3 border-t-2 border-gray-200 mt-2">
+                                <span class="text-lg font-bold text-gray-900">Net Profit</span>
+                                <span id="earnings-net" class="text-xl font-bold text-green-600">₹0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div id="settings-section" class="section hidden">
+                <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-4 lg:mb-6">Settings</h2>
+                <div class="bg-white rounded-xl shadow p-6 max-w-xl">
+                    <p class="text-sm text-gray-500 mb-4">Configure expense fees for earnings calculation. These are deducted from total revenue to show net profit.</p>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Razorpay Fee (%)</label>
+                            <input type="number" id="settings-razorpay" min="0" step="0.01" placeholder="e.g. 2" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="text-xs text-gray-400 mt-1">Percentage deducted per transaction (e.g. 2 for 2%)</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Delivery Charges (₹ per order)</label>
+                            <input type="number" id="settings-delivery" min="0" step="1" placeholder="e.g. 50" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="text-xs text-gray-400 mt-1">Fixed amount you pay per order for delivery</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Free Delivery Quantity</label>
+                            <input type="number" id="settings-free-delivery" min="0" step="1" placeholder="e.g. 5" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="text-xs text-gray-400 mt-1">Number of items in cart for free delivery (0 = no free delivery)</p>
+                        </div>
+                        <button onclick="saveSettings()" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center space-x-2">
+                            <i data-lucide="save"></i>
+                            <span>Save Settings</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -477,9 +562,16 @@
                         <input type="hidden" id="product-images-json" value="[]">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
-                    <input type="number" id="product-discount" min="0" max="100" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
+                        <input type="number" id="product-discount" min="0" max="100" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Delivery Fee (₹)</label>
+                        <input type="number" id="product-delivery-fee" min="0" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0">
+                        <p class="text-xs text-gray-400 mt-1">Charged per item. Free if cart meets free delivery quantity.</p>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
@@ -798,6 +890,8 @@
             else if (sectionId === 'users-section') loadUsers();
             else if (sectionId === 'help-section') loadHelpRequests();
             else if (sectionId === 'promo-section') loadPromoCodes();
+            else if (sectionId === 'earnings-section') loadEarnings();
+            else if (sectionId === 'settings-section') loadSettings();
             
             // Create icons after section loads
             setTimeout(() => createLucideIcons(), 100);
@@ -1213,6 +1307,7 @@
                 document.getElementById('product-name').value = product.name || '';
                 document.getElementById('product-price').value = product.price || '';
                 document.getElementById('product-discount').value = product.discount || 0;
+                document.getElementById('product-delivery-fee').value = product.deliveryFee || 0;
                 document.getElementById('product-category').value = product.category || '';
                 document.getElementById('product-material').value = product.material || '';
                 document.getElementById('product-description').value = product.description || '';
@@ -1244,6 +1339,7 @@
                 name: document.getElementById('product-name').value,
                 price: parseFloat(document.getElementById('product-price').value),
                 discount: parseFloat(document.getElementById('product-discount').value) || 0,
+                deliveryFee: parseFloat(document.getElementById('product-delivery-fee').value) || 0,
                 image: mainImage, // Main image for backward compatibility
                 images: productImages, // All images array
                 category: document.getElementById('product-category').value,
@@ -2139,6 +2235,56 @@
                 renderPromoCodes(promoCodes);
             } catch (error) {
                 console.error('Failed to load promo codes:', error);
+            }
+        }
+
+        const formatCurrency = (n) => '₹' + (n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+
+        async function loadEarnings() {
+            try {
+                const data = await apiRequest('/admin/earnings');
+                document.getElementById('earnings-gross').textContent = formatCurrency(data.grossRevenue);
+                document.getElementById('earnings-delivery').textContent = formatCurrency(data.totalDeliveryCollected);
+                document.getElementById('earnings-qty').textContent = (data.totalQuantitySold || 0).toLocaleString();
+                document.getElementById('earnings-orders').textContent = (data.totalOrders || 0).toLocaleString();
+                document.getElementById('earnings-total-rev').textContent = formatCurrency(data.totalRevenue);
+                document.getElementById('earnings-rp-pct').textContent = data.razorpayFeePercent || 0;
+                document.getElementById('earnings-rp-exp').textContent = '-₹' + (data.razorpayExpense || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+                document.getElementById('earnings-del-pc').textContent = data.deliveryChargesPerOrder || 0;
+                document.getElementById('earnings-del-exp').textContent = '-₹' + (data.deliveryExpense || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+                document.getElementById('earnings-net').textContent = formatCurrency(data.netProfit);
+            } catch (e) {
+                console.error('Earnings load error:', e);
+                document.getElementById('earnings-container').innerHTML += '<p class="text-red-500">Failed to load earnings.</p>';
+            }
+            createLucideIcons();
+        }
+
+        async function loadSettings() {
+            try {
+                const s = await apiRequest('/admin/settings');
+                document.getElementById('settings-razorpay').value = s.razorpayFeePercent ?? '';
+                document.getElementById('settings-delivery').value = s.deliveryChargesAmount ?? '';
+                document.getElementById('settings-free-delivery').value = s.freeDeliveryQuantity ?? '';
+            } catch (e) {
+                console.error('Settings load error:', e);
+            }
+            createLucideIcons();
+        }
+
+        async function saveSettings() {
+            try {
+                await apiRequest('/admin/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        razorpayFeePercent: parseFloat(document.getElementById('settings-razorpay').value) || 0,
+                        deliveryChargesAmount: parseFloat(document.getElementById('settings-delivery').value) || 0,
+                        freeDeliveryQuantity: parseInt(document.getElementById('settings-free-delivery').value) || 0
+                    })
+                });
+                alert('Settings saved');
+            } catch (e) {
+                alert('Failed to save settings: ' + e.message);
             }
         }
         

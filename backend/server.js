@@ -158,6 +158,7 @@ const orderSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     items: Array,
     subtotal: Number,
+    deliveryFee: { type: Number, default: 0 },
     total: Number,
     discount: Number,
     payment: String,
@@ -177,6 +178,7 @@ const productSchema = new mongoose.Schema({
     name: { type: String, required: true },
     price: { type: Number, required: true },
     discount: { type: Number, default: 0 }, // Discount percentage
+    deliveryFee: { type: Number, default: 0 }, // Delivery fee per product (shown to user)
     image: String, // Main image ID (MongoDB ObjectId)
     images: [String], // Multiple image IDs (MongoDB ObjectIds)
     category: String,
@@ -258,6 +260,14 @@ const heroSchema = new mongoose.Schema({
     showSubtitle: { type: Boolean, default: true }, // Subtitle visibility
     updatedAt: { type: Date, default: Date.now }
 });
+
+// Store settings (Razorpay fee, delivery charges, free delivery threshold)
+const settingsSchema = new mongoose.Schema({
+    razorpayFeePercent: { type: Number, default: 0 }, // e.g. 2 for 2%
+    deliveryChargesAmount: { type: Number, default: 0 }, // Admin expense per order (fixed)
+    freeDeliveryQuantity: { type: Number, default: 0 } // 0 = no free delivery, 5 = 5+ items = free
+}, { collection: 'settings', versionKey: false });
+const Settings = mongoose.model('Settings', settingsSchema);
 
 const User = mongoose.model('User', userSchema);
 const Profile = mongoose.model('Profile', profileSchema);
@@ -1251,6 +1261,81 @@ app.delete('/api/admin/categories/:id', authenticateAdmin, async (req, res) => {
     } catch (error) {
         console.error('Delete category error:', error);
         res.status(500).json({ error: 'Failed to delete category' });
+    }
+});
+
+// ==================== SETTINGS & EARNINGS ====================
+app.get('/api/settings', async (req, res) => {
+    try {
+        let s = await Settings.findOne();
+        if (!s) {
+            s = await Settings.findOneAndUpdate({}, {}, { upsert: true, new: true });
+        }
+        res.json({ freeDeliveryQuantity: (s && s.freeDeliveryQuantity) || 0 });
+    } catch (e) {
+        res.json({ freeDeliveryQuantity: 0 });
+    }
+});
+
+app.get('/api/admin/settings', authenticateAdmin, async (req, res) => {
+    try {
+        let s = await Settings.findOne();
+        if (!s) s = await Settings.findOneAndUpdate({}, {}, { upsert: true, new: true });
+        res.json(s.toObject ? s.toObject() : s);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to load settings' });
+    }
+});
+
+app.put('/api/admin/settings', authenticateAdmin, async (req, res) => {
+    try {
+        const { razorpayFeePercent, deliveryChargesAmount, freeDeliveryQuantity } = req.body;
+        const update = {};
+        if (typeof razorpayFeePercent === 'number') update.razorpayFeePercent = razorpayFeePercent;
+        if (typeof deliveryChargesAmount === 'number') update.deliveryChargesAmount = deliveryChargesAmount;
+        if (typeof freeDeliveryQuantity === 'number') update.freeDeliveryQuantity = Math.max(0, freeDeliveryQuantity);
+        const s = await Settings.findOneAndUpdate({}, { $set: update }, { upsert: true, new: true });
+        res.json(s.toObject ? s.toObject() : s);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to save settings' });
+    }
+});
+
+app.get('/api/admin/earnings', authenticateAdmin, async (req, res) => {
+    try {
+        const orders = await Order.find({ paymentStatus: 'Success' });
+        const settings = await Settings.findOne();
+        const razorpayFeePct = (settings && settings.razorpayFeePercent) || 0;
+        const deliveryCharges = (settings && settings.deliveryChargesAmount) || 0;
+
+        let grossRevenue = 0, totalDeliveryCollected = 0, totalQuantitySold = 0;
+        orders.forEach(o => {
+            grossRevenue += (o.subtotal || 0);
+            totalDeliveryCollected += (o.deliveryFee || 0);
+            totalQuantitySold += (o.items || []).reduce((s, i) => s + (i.quantity || 0), 0);
+        });
+        const totalRevenue = grossRevenue + totalDeliveryCollected;
+        const razorpayExpense = (totalRevenue * razorpayFeePct) / 100;
+        const deliveryExpense = orders.length * deliveryCharges;
+        const totalExpenses = razorpayExpense + deliveryExpense;
+        const netProfit = totalRevenue - totalExpenses;
+
+        res.json({
+            grossRevenue,
+            totalDeliveryCollected,
+            totalRevenue,
+            totalQuantitySold,
+            totalOrders: orders.length,
+            razorpayFeePercent: razorpayFeePct,
+            razorpayExpense,
+            deliveryChargesPerOrder: deliveryCharges,
+            deliveryExpense,
+            totalExpenses,
+            netProfit
+        });
+    } catch (e) {
+        console.error('Earnings error:', e);
+        res.status(500).json({ error: 'Failed to load earnings' });
     }
 });
 

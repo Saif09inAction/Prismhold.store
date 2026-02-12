@@ -876,11 +876,22 @@
             });
         }
         
+        async function loadStoreSettings() {
+            try {
+                const r = await fetch(`${API_BASE_URL}/settings`, { cache: 'no-store' });
+                if (r.ok) {
+                    const d = await r.json();
+                    storeSettings = { freeDeliveryQuantity: d.freeDeliveryQuantity || 0 };
+                }
+            } catch (e) { /* ignore */ }
+        }
+        
         // Initialize app - check for existing auth
         window.initApp = async function() {
             await loadHeroContent(); // Load hero first
             await loadCategories(); // Load categories first
             await loadProducts(); // Load products
+            await loadStoreSettings();
             const token = getAuthToken();
             const user = getCurrentUser();
             
@@ -1186,6 +1197,11 @@
                                     <span>Discount</span>
                                     <span id="checkout-discount" class="font-medium text-base">₹0</span>
                                 </div>
+                                <div id="checkout-delivery-row" class="flex justify-between text-gray-600 items-center hidden">
+                                    <span>Delivery Fee</span>
+                                    <span id="checkout-delivery" class="font-medium text-base">₹0</span>
+                                </div>
+                                <div id="checkout-free-delivery-msg" class="text-sm py-2 hidden"></div>
                                 <div class="pt-3 border-t border-gray-100">
                                     <div class="flex space-x-2">
                                         <input type="text" id="coupon-code" placeholder="PROMO CODE" class="flex-grow p-3 bg-gray-50 border-2 border-gray-200 rounded-lg text-sm uppercase tracking-wider outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all">
@@ -1526,6 +1542,7 @@
         let authMode = 'login';
         let currentCategory = 'all';
         let products = []; // Initialize products array to prevent undefined errors
+        let storeSettings = { freeDeliveryQuantity: 0 };
         const businessPhone = "917257857609"; 
         const formatCurrency = (amount) => `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0, minimumFractionDigits: 0 })}`;
 
@@ -1587,7 +1604,7 @@
                     <div class="p-5">
                         <p class="text-xs text-gray-400 uppercase tracking-wider mb-2 font-semibold">${p.category}</p>
                         <h3 class="text-sm font-bold text-gray-900 line-clamp-2 mb-2 leading-snug min-h-[2.5rem]">${p.name}</h3>
-                        <p class="text-lg font-bold text-accent">${formatCurrency(p.price)}</p>
+                        <div>${p.discount ? `<span class="text-lg font-bold text-accent">${formatCurrency(p.price * (1 - p.discount/100))}</span><span class="text-xs text-gray-400 line-through ml-1">${formatCurrency(p.price)}</span>` : `<p class="text-lg font-bold text-accent">${formatCurrency(p.price)}</p>`}${(p.deliveryFee || 0) > 0 ? `<p class="text-xs text-gray-500 mt-0.5">+ ${formatCurrency(p.deliveryFee)} delivery</p>` : ''}</div>
                     </div>
                 </div>`;
             }).join('') : '<div class="col-span-full empty-state"><div class="empty-state-icon"><i data-lucide="search-x" class="w-16 h-16 mx-auto text-gray-300"></i></div><p class="text-gray-400 text-base mb-2 font-medium">No products found</p><p class="text-gray-400 text-sm">Try adjusting your search or filters</p></div>';
@@ -1867,7 +1884,8 @@
             if (!p) return;
             // Calculate final price with discount
             const finalPrice = p.discount ? p.price * (1 - p.discount / 100) : p.price;
-            const productWithPrice = { ...p, price: finalPrice, originalPrice: p.price };
+            const deliveryFee = p.deliveryFee || 0;
+            const productWithPrice = { ...p, price: finalPrice, originalPrice: p.price, deliveryFee };
             const item = cartItems.find(x => x.id === id);
             if(item) {
                 item.quantity++; 
@@ -1960,7 +1978,11 @@
             if (selectedItems && selectedItems.length > 0) {
                 subtotal = selectedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
             }
-            const total = subtotal - discountAmount;
+            const totalQty = selectedItems.reduce((s, i) => s + i.quantity, 0);
+            const freeQty = storeSettings.freeDeliveryQuantity || 0;
+            let deliveryFee = selectedItems.reduce((s, i) => s + ((i.deliveryFee || 0) * i.quantity), 0);
+            if (freeQty > 0 && totalQty >= freeQty) deliveryFee = 0;
+            const total = subtotal - discountAmount + deliveryFee;
 
             if (selectedItems.length === 0) {
                 list.innerHTML = '<div class="text-center py-8 text-gray-400"><i data-lucide="shopping-bag" class="w-12 h-12 mx-auto mb-3 opacity-30"></i><p class="text-sm">No items selected</p></div>';
@@ -2007,6 +2029,33 @@
 
             const discountEl = document.getElementById('checkout-discount');
             if (discountEl) discountEl.textContent = discountAmount > 0 ? `-${formatCurrency(discountAmount)}` : formatCurrency(0);
+            
+            const deliveryRow = document.getElementById('checkout-delivery-row');
+            const deliveryEl = document.getElementById('checkout-delivery');
+            const freeMsg = document.getElementById('checkout-free-delivery-msg');
+            if (deliveryRow && deliveryEl && freeMsg) {
+                if (deliveryFee > 0) {
+                    deliveryRow.classList.remove('hidden');
+                    deliveryEl.textContent = formatCurrency(deliveryFee);
+                    if (freeQty > 0 && totalQty < freeQty) {
+                        const need = freeQty - totalQty;
+                        freeMsg.classList.remove('hidden');
+                        freeMsg.className = 'text-sm py-2 text-green-600 font-medium';
+                        freeMsg.textContent = `Add ${need} more item${need > 1 ? 's' : ''} to get free delivery`;
+                    } else {
+                        freeMsg.classList.add('hidden');
+                    }
+                } else {
+                    deliveryRow.classList.add('hidden');
+                    if (freeQty > 0 && totalQty >= freeQty) {
+                        freeMsg.classList.remove('hidden');
+                        freeMsg.className = 'text-sm py-2 text-green-600 font-semibold';
+                        freeMsg.textContent = 'You got free delivery!';
+                    } else {
+                        freeMsg.classList.add('hidden');
+                    }
+                }
+            }
             
             lucide.createIcons();
         }
@@ -2089,15 +2138,19 @@
             document.getElementById('product-detail-category').textContent = product.category;
             document.getElementById('product-detail-name').textContent = product.name;
             const priceEl = document.getElementById('product-detail-price');
+            const unitPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+            const deliveryFee = product.deliveryFee || 0;
             if (product.discount) {
-                const discountedPrice = product.price * (1 - product.discount / 100);
                 priceEl.innerHTML = `
-                    <span class="text-2xl font-bold text-accent">${formatCurrency(discountedPrice)}</span>
+                    <span class="text-2xl font-bold text-accent">${formatCurrency(unitPrice)}</span>
                     <span class="text-lg text-gray-400 line-through ml-2">${formatCurrency(product.price)}</span>
                     <span class="ml-2 text-sm bg-red-100 text-red-600 px-2 py-1 rounded">-${product.discount}%</span>
+                    ${deliveryFee > 0 ? `<span class="block mt-2 text-sm text-gray-600">+ ${formatCurrency(deliveryFee)} delivery fee per item</span><span class="block mt-1 text-base font-bold">Total: ${formatCurrency(unitPrice + deliveryFee)} per item</span>` : ''}
                 `;
             } else {
-                priceEl.textContent = formatCurrency(product.price);
+                priceEl.innerHTML = deliveryFee > 0 
+                    ? `<span class="text-2xl font-bold text-accent">${formatCurrency(unitPrice)}</span><span class="block mt-2 text-sm text-gray-600">+ ${formatCurrency(deliveryFee)} delivery fee per item</span><span class="block mt-1 text-base font-bold">Total: ${formatCurrency(unitPrice + deliveryFee)} per item</span>`
+                    : formatCurrency(unitPrice);
             }
             document.getElementById('product-detail-material').textContent = product.material || 'Premium Quality';
             document.getElementById('product-detail-description').textContent = product.description || 'Luxury product with exceptional quality and design.';
@@ -2558,9 +2611,13 @@
             
             const pay = document.querySelector('input[name="payment_method"]:checked').value;
             const sub = selectedItems.reduce((s,i)=>s+(i.price*i.quantity),0); 
-            const tot = sub - discountAmount;
+            const totalQty = selectedItems.reduce((s,i)=>s+i.quantity,0);
+            const freeQty = storeSettings.freeDeliveryQuantity || 0;
+            let deliveryFee = selectedItems.reduce((s,i)=>s+((i.deliveryFee||0)*i.quantity),0);
+            if (freeQty > 0 && totalQty >= freeQty) deliveryFee = 0;
+            const tot = sub - discountAmount + deliveryFee;
             const addr = userAddresses.find(a=>a.id===selectedAddressId);
-            const order = { items: selectedItems, subtotal: sub, total: tot, discount: discountAmount, payment: pay, address: addr, status: 'Pending', date: new Date().toLocaleString(), promoCode: appliedPromoCode };
+            const order = { items: selectedItems, subtotal: sub, deliveryFee, total: tot, discount: discountAmount, payment: pay, address: addr, status: 'Pending', date: new Date().toLocaleString(), promoCode: appliedPromoCode };
             
             try {
                 // Create order first
@@ -2960,6 +3017,12 @@
                             <span class="text-gray-600">Subtotal</span>
                             <span class="font-medium text-gray-800">${formatCurrency(subtotal)}</span>
                         </div>
+                        ${(orderData.deliveryFee || 0) > 0 ? `
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Delivery Fee</span>
+                            <span class="font-medium text-gray-800">${formatCurrency(orderData.deliveryFee)}</span>
+                        </div>
+                        ` : ''}
                         ${discount > 0 ? `
                         <div class="flex justify-between text-sm">
                             <span class="text-green-600">Discount</span>
