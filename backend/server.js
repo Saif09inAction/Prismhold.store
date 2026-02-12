@@ -42,7 +42,8 @@ const PORT_NUM = Number(PORT) || 3000;
 // CORS: allow frontend (Vercel) and local dev
 const allowedOrigins = [
     "http://localhost:3000",
-    "https://prismhold-store-mqkr.vercel.app"
+    "https://prismhold-store-mqkr.vercel.app",
+    "https://prismhold-admin.vercel.app"
 ];
 
 app.use(cors({
