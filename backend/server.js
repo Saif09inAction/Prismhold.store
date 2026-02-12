@@ -179,6 +179,8 @@ const productSchema = new mongoose.Schema({
     price: { type: Number, required: true },
     discount: { type: Number, default: 0 }, // Discount percentage
     deliveryFee: { type: Number, default: 0 }, // Delivery fee per product (shown to user)
+    freeDeliveryQuantity: { type: Number, default: 0 }, // 0 = use global, >0 = buy this many of this product for free delivery
+    stock: { type: Number, default: 999 }, // Quantity available (0 = sold out)
     image: String, // Main image ID (MongoDB ObjectId)
     images: [String], // Multiple image IDs (MongoDB ObjectIds)
     category: String,
@@ -974,13 +976,21 @@ app.post('/api/payments/razorpay/verify', authenticateToken, async (req, res) =>
             const payment = await razorpay.payments.fetch(razorpayPaymentId);
             
             if (payment.status === 'captured' || payment.status === 'authorized') {
+                const wasAlreadySuccess = order.paymentStatus === 'Success';
                 order.paymentStatus = 'Success';
                 order.status = 'Processing';
                 order.razorpayOrderId = razorpayOrderId;
                 order.razorpayPaymentId = razorpayPaymentId;
                 order.razorpaySignature = razorpaySignature;
                 await order.save();
-                
+                if (!wasAlreadySuccess && order.items && order.items.length > 0) {
+                    for (const item of order.items) {
+                        await Product.findOneAndUpdate(
+                            { id: item.id },
+                            { $inc: { stock: -(item.quantity || 0) } }
+                        );
+                    }
+                }
                 res.json({ success: true, message: 'Payment verified successfully' });
             } else {
                 order.paymentStatus = 'Failed';
@@ -1023,10 +1033,16 @@ app.post('/api/payments/razorpay/webhook', express.raw({ type: 'application/json
         if (event.event === 'payment.captured' || event.event === 'payment.authorized') {
             const order = await Order.findOne({ razorpayOrderId: payload.payment.entity.order_id });
             if (order) {
+                const wasAlreadySuccess = order.paymentStatus === 'Success';
                 order.paymentStatus = 'Success';
                 order.status = 'Processing';
                 order.razorpayPaymentId = payload.payment.entity.id;
                 await order.save();
+                if (!wasAlreadySuccess && order.items && order.items.length > 0) {
+                    for (const item of order.items) {
+                        await Product.findOneAndUpdate({ id: item.id }, { $inc: { stock: -(item.quantity || 0) } });
+                    }
+                }
             }
         } else if (event.event === 'payment.failed') {
             const order = await Order.findOne({ razorpayOrderId: payload.payment.entity.order_id });
