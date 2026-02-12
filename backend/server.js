@@ -269,15 +269,37 @@ const PromoCode = mongoose.model('PromoCode', promoCodeSchema);
 const Hero = mongoose.model('Hero', heroSchema);
 const Image = mongoose.model('Image', imageSchema);
 
+// Helper function to convert Google Drive share links to direct image URLs
+function convertGoogleDriveToDirectUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    // Match: drive.google.com/file/d/FILE_ID/view or /file/d/FILE_ID
+    const fileIdMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileIdMatch) {
+        return `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
+    }
+    // Match: drive.google.com/open?id=FILE_ID or drive.google.com/uc?id=FILE_ID
+    const idParamMatch = url.match(/drive\.google\.com\/(?:open|uc)\?.*id=([a-zA-Z0-9_-]+)/);
+    if (idParamMatch) {
+        return `https://drive.google.com/uc?export=view&id=${idParamMatch[1]}`;
+    }
+    return null;
+}
+
 // Helper function to convert image ID/URL to proper URL
 function convertImageToUrl(imageIdOrUrl) {
     if (!imageIdOrUrl) return null;
+    if (typeof imageIdOrUrl !== 'string') return imageIdOrUrl;
+    // Convert Google Drive share links to direct image URLs (share links return HTML, not images)
+    if (imageIdOrUrl.includes('drive.google.com')) {
+        const directUrl = convertGoogleDriveToDirectUrl(imageIdOrUrl);
+        if (directUrl) return directUrl;
+    }
     // If it's already a URL (starts with /uploads/ or http), return as is
-    if (typeof imageIdOrUrl === 'string' && (imageIdOrUrl.startsWith('/uploads/') || imageIdOrUrl.startsWith('http'))) {
+    if (imageIdOrUrl.startsWith('/uploads/') || imageIdOrUrl.startsWith('http')) {
         return imageIdOrUrl;
     }
     // If it's a MongoDB ObjectId (24 hex characters), convert to API URL
-    if (typeof imageIdOrUrl === 'string' && /^[0-9a-fA-F]{24}$/.test(imageIdOrUrl)) {
+    if (/^[0-9a-fA-F]{24}$/.test(imageIdOrUrl)) {
         return `/api/images/${imageIdOrUrl}`;
     }
     return imageIdOrUrl;
@@ -303,6 +325,16 @@ function convertHeroImages(hero) {
         heroObj.images = heroObj.images.map(img => convertImageToUrl(img)).filter(Boolean);
     }
     return heroObj;
+}
+
+// Helper function to convert category cover images
+function convertCategoryImages(category) {
+    if (!category) return category;
+    const catObj = category.toObject ? category.toObject() : category;
+    if (catObj.coverImage) {
+        catObj.coverImage = convertImageToUrl(catObj.coverImage);
+    }
+    return catObj;
 }
 
 // JWT Authentication Middleware
@@ -1172,7 +1204,7 @@ app.delete('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
 app.get('/api/admin/categories', authenticateAdmin, async (req, res) => {
     try {
         const categories = await Category.find().sort({ name: 1 });
-        res.json(categories);
+        res.json(categories.map(convertCategoryImages));
     } catch (error) {
         console.error('Get categories error:', error);
         res.status(500).json({ error: 'Failed to get categories' });
@@ -1578,7 +1610,7 @@ app.get('/api/categories', async (req, res) => {
             });
         }
         const categories = await Category.find().sort({ name: 1 });
-        res.json(categories);
+        res.json(categories.map(convertCategoryImages));
     } catch (error) {
         console.error('Get categories error:', error);
         console.error('Error stack:', error.stack);
@@ -1607,7 +1639,7 @@ app.get('/api/categories/most-ordered', async (req, res) => {
             categories.find(cat => cat.name === name)
         ).filter(Boolean);
         
-        res.json(sortedCategories);
+        res.json(sortedCategories.map(convertCategoryImages));
     } catch (error) {
         console.error('Get most ordered categories error:', error);
         res.status(500).json({ error: 'Failed to get most ordered categories' });

@@ -1383,6 +1383,24 @@
     <!-- Product Added Notification Container -->
     <div id="product-notification-container" class="fixed top-20 right-4 z-[85] space-y-3 w-80 max-w-[calc(100vw-2rem)] pointer-events-none"></div>
 
+    <!-- Image Viewer Popup (zoom, close) -->
+    <div id="image-viewer-popup" class="fixed inset-0 bg-black/90 z-[95] hidden flex flex-col items-center justify-center" onclick="closeImagePopup(event)">
+        <div class="absolute top-4 right-4 flex gap-2 z-10" onclick="event.stopPropagation()">
+            <button type="button" onclick="zoomOutImage()" class="p-2.5 bg-white/90 hover:bg-white rounded-full shadow-lg transition" aria-label="Zoom out">
+                <i data-lucide="zoom-out" class="w-5 h-5 text-gray-700"></i>
+            </button>
+            <button type="button" onclick="zoomInImage()" class="p-2.5 bg-white/90 hover:bg-white rounded-full shadow-lg transition" aria-label="Zoom in">
+                <i data-lucide="zoom-in" class="w-5 h-5 text-gray-700"></i>
+            </button>
+            <button type="button" onclick="closeImagePopup()" class="p-2.5 bg-white/90 hover:bg-white rounded-full shadow-lg transition" aria-label="Close">
+                <i data-lucide="x" class="w-5 h-5 text-gray-700"></i>
+            </button>
+        </div>
+        <div class="overflow-auto w-full h-full flex items-center justify-center p-4 pt-20" onclick="closeImagePopup(event)">
+            <img id="image-viewer-img" src="" alt="Product" class="max-w-full max-h-[85vh] object-contain transition-transform duration-200 select-none" style="transform-origin: center;" onclick="event.stopPropagation()" draggable="false">
+        </div>
+    </div>
+
     <!-- Product Detail Modal -->
     <div id="product-detail-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] hidden flex items-center justify-center p-4" onclick="closeProductDetailModal(event)">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in" onclick="event.stopPropagation()">
@@ -1399,7 +1417,7 @@
                 <div class="flex flex-col md:flex-row gap-8 mb-8">
                     <div class="w-full md:w-1/2">
                         <div class="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl overflow-hidden mb-4 shadow-lg border-2 border-gray-100 relative">
-                            <img id="product-detail-image" src="" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105" alt="Product">
+                            <img id="product-detail-image" src="" class="w-full h-full object-cover transition-transform duration-500 hover:scale-105 cursor-pointer" alt="Product" onclick="openImagePopup()" title="Click to view full size">
                             <!-- Navigation arrows - smaller and positioned at edges on mobile -->
                             <div id="product-detail-image-nav" class="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex items-center justify-between px-1 md:px-4 md:inset-0 md:opacity-0 md:hover:opacity-100 transition-opacity pointer-events-none z-10">
                                 <button id="product-detail-prev" onclick="changeProductImage(-1); event.stopPropagation();" class="bg-white/95 backdrop-blur-md rounded-full p-1.5 md:p-2 shadow-lg hover:bg-white transition pointer-events-auto ml-1 md:ml-0">
@@ -2047,7 +2065,7 @@
                 thumbnailsContainer.innerHTML = currentProductImages.map((img, index) => `
                     <img src="${img}" alt="Thumbnail ${index + 1}" 
                          class="product-thumbnail w-20 h-20 object-cover rounded-lg cursor-pointer border-2 transition-all ${index === 0 ? 'ring-2 ring-primary ring-offset-2' : 'border-gray-200'}" 
-                         onclick="currentImageIndex = ${index}; document.getElementById('product-detail-image').src = '${img}'; updateThumbnailSelection();">
+                         onclick="currentImageIndex = ${index}; document.getElementById('product-detail-image').src = '${img}'; updateThumbnailSelection(); openImagePopup(${index});">
                 `).join('');
             } else {
                 thumbnailsContainer.innerHTML = '';
@@ -2106,6 +2124,49 @@
                 document.getElementById('product-detail-modal').classList.add('hidden');
                 currentProductDetailId = null;
             }
+        }
+        
+        let imageViewerZoom = 1;
+        const IMAGE_VIEWER_ZOOM_MIN = 0.5;
+        const IMAGE_VIEWER_ZOOM_MAX = 3;
+        const IMAGE_VIEWER_ZOOM_STEP = 0.25;
+        
+        function openImagePopup(imageIndexOrSrc) {
+            let src = '';
+            if (typeof imageIndexOrSrc === 'number' && currentProductImages && currentProductImages[imageIndexOrSrc]) {
+                src = currentProductImages[imageIndexOrSrc];
+            } else if (typeof imageIndexOrSrc === 'string') {
+                src = imageIndexOrSrc;
+            } else {
+                src = document.getElementById('product-detail-image').src || (currentProductImages && currentProductImages[currentImageIndex]) || '';
+            }
+            if (!src) return;
+            const popup = document.getElementById('image-viewer-popup');
+            const img = document.getElementById('image-viewer-img');
+            img.src = src;
+            imageViewerZoom = 1;
+            img.style.transform = `scale(${imageViewerZoom})`;
+            popup.classList.remove('hidden');
+            popup.classList.add('flex');
+            lucide.createIcons();
+        }
+        
+        function closeImagePopup(e) {
+            if (e && e.target.closest('#image-viewer-img')) return;
+            document.getElementById('image-viewer-popup').classList.add('hidden');
+            document.getElementById('image-viewer-popup').classList.remove('flex');
+        }
+        
+        function zoomInImage() {
+            if (imageViewerZoom >= IMAGE_VIEWER_ZOOM_MAX) return;
+            imageViewerZoom = Math.min(IMAGE_VIEWER_ZOOM_MAX, imageViewerZoom + IMAGE_VIEWER_ZOOM_STEP);
+            document.getElementById('image-viewer-img').style.transform = `scale(${imageViewerZoom})`;
+        }
+        
+        function zoomOutImage() {
+            if (imageViewerZoom <= IMAGE_VIEWER_ZOOM_MIN) return;
+            imageViewerZoom = Math.max(IMAGE_VIEWER_ZOOM_MIN, imageViewerZoom - IMAGE_VIEWER_ZOOM_STEP);
+            document.getElementById('image-viewer-img').style.transform = `scale(${imageViewerZoom})`;
         }
         
         function addToCartFromDetail() {
