@@ -52,7 +52,15 @@ app.use(cors({
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
-        return callback(new Error("Not allowed by CORS"));
+        // Allow any Vercel deployment (*.vercel.app)
+        try {
+            const url = new URL(origin);
+            if (url.hostname.endsWith('.vercel.app')) {
+                return callback(null, true);
+            }
+        } catch (e) { /* ignore */ }
+        console.warn('CORS rejected origin:', origin);
+        return callback(null, false);
     },
     credentials: true
 }));
