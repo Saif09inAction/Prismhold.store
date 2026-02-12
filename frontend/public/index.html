@@ -1398,28 +1398,27 @@
     <!-- Product Added Notification Container -->
     <div id="product-notification-container" class="fixed top-20 right-4 z-[85] space-y-3 w-80 max-w-[calc(100vw-2rem)] pointer-events-none"></div>
 
-    <!-- Image Viewer Popup - modal style (centered, in front, like Amazon) -->
-    <div id="image-viewer-popup" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] hidden flex items-center justify-center p-4" onclick="closeImagePopup(event)">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative animate-scale-in" onclick="event.stopPropagation()">
-            <div class="absolute top-4 right-4 flex gap-2 z-10">
-                <button type="button" onclick="zoomOutImage()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Zoom out">
-                    <i data-lucide="zoom-out" class="w-5 h-5 text-gray-700"></i>
-                </button>
-                <button type="button" onclick="zoomInImage()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Zoom in">
-                    <i data-lucide="zoom-in" class="w-5 h-5 text-gray-700"></i>
-                </button>
-                <button type="button" onclick="closeImagePopup()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Close">
-                    <i data-lucide="x" class="w-5 h-5 text-gray-700"></i>
-                </button>
-            </div>
-            <div id="image-viewer-container" class="flex-1 overflow-hidden flex items-center justify-center p-6 pt-16 min-h-[200px] touch-none cursor-grab active:cursor-grabbing" onclick="event.stopPropagation()">
-                <img id="image-viewer-img" src="" alt="Product" class="max-w-full max-h-[70vh] object-contain select-none pointer-events-none" style="transform-origin: center; transition: transform 0.1s ease-out;" draggable="false">
-            </div>
-        </div>
-    </div>
-
     <!-- Product Detail Modal -->
     <div id="product-detail-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] hidden flex items-center justify-center p-4" onclick="closeProductDetailModal(event)">
+        <!-- Image Viewer Popup - inside modal so it overlays product details, close returns to product details -->
+        <div id="image-viewer-popup" class="absolute inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4" onclick="if(event.target.id==='image-viewer-popup')closeImagePopup()">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden relative animate-scale-in" onclick="event.stopPropagation()">
+                <div class="absolute top-4 right-4 flex gap-2 z-10">
+                    <button type="button" onclick="zoomOutImage()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Zoom out">
+                        <i data-lucide="zoom-out" class="w-5 h-5 text-gray-700"></i>
+                    </button>
+                    <button type="button" onclick="zoomInImage()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Zoom in">
+                        <i data-lucide="zoom-in" class="w-5 h-5 text-gray-700"></i>
+                    </button>
+                    <button type="button" onclick="closeImagePopup()" class="p-2.5 bg-white/95 hover:bg-white rounded-full shadow-lg transition border border-gray-100" aria-label="Close">
+                        <i data-lucide="x" class="w-5 h-5 text-gray-700"></i>
+                    </button>
+                </div>
+                <div id="image-viewer-container" class="flex-1 overflow-hidden flex items-center justify-center p-6 pt-16 min-h-[200px] touch-none cursor-grab active:cursor-grabbing" onclick="event.stopPropagation()">
+                    <img id="image-viewer-img" src="" alt="Product" class="max-w-full max-h-[70vh] object-contain select-none pointer-events-none" style="transform-origin: center; transition: transform 0.1s ease-out;" draggable="false">
+                </div>
+            </div>
+        </div>
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in" onclick="event.stopPropagation()">
             <div class="flex justify-between items-center p-6 border-b border-gray-100 bg-white/98 backdrop-blur-sm shrink-0">
                 <h2 class="text-xl font-bold text-primary flex items-center">
