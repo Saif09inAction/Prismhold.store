@@ -40,7 +40,21 @@ if (!PORT) {
 const PORT_NUM = Number(PORT) || 3000;
 
 // CORS: allow frontend (Vercel) and local dev
-app.use(cors());
+const allowedOrigins = [
+    "http://localhost:3000",
+    "https://prismhold-store-mqkr.vercel.app"
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true
+}));
 app.use(express.json());
 
 // Configure multer for file uploads - memory storage, images stored in MongoDB
