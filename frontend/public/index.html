@@ -1412,8 +1412,8 @@
                     <i data-lucide="x" class="w-5 h-5 text-gray-700"></i>
                 </button>
             </div>
-            <div class="flex-1 overflow-auto flex items-center justify-center p-6 pt-16 min-h-[200px]">
-                <img id="image-viewer-img" src="" alt="Product" class="max-w-full max-h-[70vh] object-contain transition-transform duration-200 select-none" style="transform-origin: center;" onclick="event.stopPropagation()" draggable="false">
+            <div id="image-viewer-container" class="flex-1 overflow-hidden flex items-center justify-center p-6 pt-16 min-h-[200px] touch-none cursor-grab active:cursor-grabbing" onclick="event.stopPropagation()">
+                <img id="image-viewer-img" src="" alt="Product" class="max-w-full max-h-[70vh] object-contain select-none pointer-events-none" style="transform-origin: center; transition: transform 0.1s ease-out;" draggable="false">
             </div>
         </div>
     </div>
@@ -2144,9 +2144,15 @@
         }
         
         let imageViewerZoom = 1;
+        let imageViewerPanX = 0, imageViewerPanY = 0;
         const IMAGE_VIEWER_ZOOM_MIN = 0.5;
-        const IMAGE_VIEWER_ZOOM_MAX = 3;
+        const IMAGE_VIEWER_ZOOM_MAX = 4;
         const IMAGE_VIEWER_ZOOM_STEP = 0.25;
+        
+        function applyImageViewerTransform() {
+            const img = document.getElementById('image-viewer-img');
+            if (img) img.style.transform = `translate(${imageViewerPanX}px, ${imageViewerPanY}px) scale(${imageViewerZoom})`;
+        }
         
         function openImagePopup(imageIndexOrSrc) {
             let src = '';
@@ -2163,14 +2169,15 @@
             const img = document.getElementById('image-viewer-img');
             img.src = src;
             imageViewerZoom = 1;
-            img.style.transform = `scale(${imageViewerZoom})`;
+            imageViewerPanX = 0;
+            imageViewerPanY = 0;
+            applyImageViewerTransform();
             popup.classList.remove('hidden');
             popup.classList.add('flex');
             lucide.createIcons();
         }
         
-        function closeImagePopup(e) {
-            if (e && e.target.closest('#image-viewer-img')) return;
+        function closeImagePopup() {
             document.getElementById('image-viewer-popup').classList.add('hidden');
             document.getElementById('image-viewer-popup').classList.remove('flex');
         }
@@ -2178,14 +2185,91 @@
         function zoomInImage() {
             if (imageViewerZoom >= IMAGE_VIEWER_ZOOM_MAX) return;
             imageViewerZoom = Math.min(IMAGE_VIEWER_ZOOM_MAX, imageViewerZoom + IMAGE_VIEWER_ZOOM_STEP);
-            document.getElementById('image-viewer-img').style.transform = `scale(${imageViewerZoom})`;
+            applyImageViewerTransform();
         }
         
         function zoomOutImage() {
             if (imageViewerZoom <= IMAGE_VIEWER_ZOOM_MIN) return;
             imageViewerZoom = Math.max(IMAGE_VIEWER_ZOOM_MIN, imageViewerZoom - IMAGE_VIEWER_ZOOM_STEP);
-            document.getElementById('image-viewer-img').style.transform = `scale(${imageViewerZoom})`;
+            applyImageViewerTransform();
         }
+        
+        // Touch & mouse gestures: pinch zoom, finger/mouse pan, wheel zoom
+        (function initImageViewerGestures() {
+            const container = document.getElementById('image-viewer-container');
+            const img = document.getElementById('image-viewer-img');
+            if (!container || !img) return;
+            
+            let touchStartDist = 0, touchStartScale = 1, touchStartPanX = 0, touchStartPanY = 0;
+            let lastPinchCenterX = 0, lastPinchCenterY = 0;
+            let initialPanX = 0, initialPanY = 0;
+            let isDragging = false, lastMouseX = 0, lastMouseY = 0;
+            
+            function getTouchCenter(touches) {
+                const t = Array.from(touches);
+                return { x: t.reduce((s, e) => s + e.clientX, 0) / t.length, y: t.reduce((s, e) => s + e.clientY, 0) / t.length };
+            }
+            function getTouchDistance(touches) {
+                if (touches.length < 2) return 0;
+                const a = touches[0], b = touches[1];
+                return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+            }
+            
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    touchStartDist = getTouchDistance(e.touches);
+                    touchStartScale = imageViewerZoom;
+                    const c = getTouchCenter(e.touches);
+                    lastPinchCenterX = c.x; lastPinchCenterY = c.y;
+                } else if (e.touches.length === 1) {
+                    touchStartPanX = imageViewerPanX;
+                    touchStartPanY = imageViewerPanY;
+                    initialPanX = e.touches[0].clientX;
+                    initialPanY = e.touches[0].clientY;
+                }
+            }, { passive: true });
+            
+            container.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const d = getTouchDistance(e.touches);
+                    if (touchStartDist > 0) {
+                        const s = touchStartScale * (d / touchStartDist);
+                        imageViewerZoom = Math.max(IMAGE_VIEWER_ZOOM_MIN, Math.min(IMAGE_VIEWER_ZOOM_MAX, s));
+                    }
+                    const c = getTouchCenter(e.touches);
+                    imageViewerPanX += c.x - lastPinchCenterX;
+                    imageViewerPanY += c.y - lastPinchCenterY;
+                    lastPinchCenterX = c.x; lastPinchCenterY = c.y;
+                    applyImageViewerTransform();
+                } else if (e.touches.length === 1) {
+                    e.preventDefault();
+                    imageViewerPanX = touchStartPanX + (e.touches[0].clientX - initialPanX);
+                    imageViewerPanY = touchStartPanY + (e.touches[0].clientY - initialPanY);
+                    applyImageViewerTransform();
+                }
+            }, { passive: false });
+            
+            container.addEventListener('wheel', (e) => {
+                if (!document.getElementById('image-viewer-popup').classList.contains('hidden')) {
+                    e.preventDefault();
+                    const delta = e.deltaY > 0 ? -IMAGE_VIEWER_ZOOM_STEP : IMAGE_VIEWER_ZOOM_STEP;
+                    imageViewerZoom = Math.max(IMAGE_VIEWER_ZOOM_MIN, Math.min(IMAGE_VIEWER_ZOOM_MAX, imageViewerZoom + delta));
+                    applyImageViewerTransform();
+                }
+            }, { passive: false });
+            
+            container.addEventListener('mousedown', (e) => { if (e.button === 0) { isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY; } });
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    imageViewerPanX += e.clientX - lastMouseX;
+                    imageViewerPanY += e.clientY - lastMouseY;
+                    lastMouseX = e.clientX; lastMouseY = e.clientY;
+                    applyImageViewerTransform();
+                }
+            });
+            document.addEventListener('mouseup', () => { isDragging = false; });
+        })();
         
         function addToCartFromDetail() {
             if (currentProductDetailId) {
