@@ -40,13 +40,7 @@ if (!PORT) {
 const PORT_NUM = Number(PORT) || 3000;
 
 // CORS: allow frontend (Vercel) and local dev
-app.use(cors({
-    origin: [
-        "http://localhost:3000",
-        "https://your-frontend-name.vercel.app"
-    ],
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 
 // Configure multer for file uploads - memory storage, images stored in MongoDB
