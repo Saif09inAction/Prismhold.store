@@ -2,7 +2,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/prismhold';
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 
 const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
@@ -15,8 +15,12 @@ const userSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 
 async function updateAdmin() {
+    if (!MONGO_URI) {
+        console.error('Set MONGO_URI or MONGODB_URI in .env');
+        process.exit(1);
+    }
     try {
-        await mongoose.connect(MONGODB_URI, {
+        await mongoose.connect(MONGO_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true
         });

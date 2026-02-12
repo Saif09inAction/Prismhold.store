@@ -89,6 +89,6 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Admin Panel running on http://localhost:${PORT}`);
+    console.log(`Admin Panel running on port ${PORT}`);
     console.log(`API Backend: ${MAIN_API_URL}`);
 });

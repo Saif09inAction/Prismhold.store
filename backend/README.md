@@ -4,12 +4,10 @@ This directory contains all backend/server-side code for the Prism Hold e-commer
 
 ## Files
 
-- **`server.js`** - Main Express.js server file
-  - Handles all API routes
-  - Serves frontend files
-  - Manages database connections
-  - Handles authentication and authorization
-  - Processes payments via Razorpay
+- **`server.js`** - API-only Express server (for Render)
+  - Serves only `/api/*` routes (no frontend)
+  - Uses `MONGO_URI` / `MONGODB_URI`, `PORT`, `CORS_ORIGIN`
+  - Handles authentication, payments (Razorpay), uploads (MongoDB)
 
 - **`create-admin.js`** - Script to create admin users
   - Run with: `npm run create-admin`
@@ -28,13 +26,14 @@ backend/
 
 ## Environment Variables
 
-The backend requires these environment variables (set in root `.env` file):
+Set in Render (or in root `.env` for local runs):
 
-- `MONGODB_URI` - MongoDB connection string
-- `PORT` - Server port (default: 3000)
-- `JWT_SECRET` - Secret for JWT token signing
-- `RAZORPAY_KEY_ID` - Razorpay API Key ID
-- `RAZORPAY_KEY_SECRET` - Razorpay API Secret
+- `MONGO_URI` or `MONGODB_URI` - MongoDB connection string (e.g. MongoDB Atlas)
+- `PORT` - Set by Render in production
+- `JWT_SECRET` - Secret for JWT signing
+- `CORS_ORIGIN` - Allowed frontend origin (e.g. `https://your-app.vercel.app`)
+- `RAZORPAY_KEY_ID` - Razorpay Key ID (public key is sent to frontend by API)
+- `RAZORPAY_KEY_SECRET` - Razorpay Key Secret
 - `GOOGLE_CLIENT_ID` - (Optional) Google OAuth Client ID
 
 ## API Routes

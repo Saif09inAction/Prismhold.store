@@ -15,9 +15,7 @@
     "update-admin": "node backend/update-admin.js",
     "build": "npm run build-css",
     "build-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --minify && cp ./frontend/dist/tailwind.css ./frontend/public/tailwind.css",
-    "watch-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --watch",
-    "postinstall": "npm run build-css",
-    "vercel-build": "npm run build-css"
+    "watch-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --watch"
   },
   "keywords": [
     "ecommerce",

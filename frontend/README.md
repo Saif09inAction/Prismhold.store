@@ -42,7 +42,7 @@ Both frontend files communicate with the backend API. The API base URL is automa
 
 ```javascript
 // Override API URL (if needed)
-window.__API_BASE_URL = 'https://your-backend-url.com/api';
+Set `API_BASE` in the HTML to your Render backend URL, e.g. `https://your-backend.onrender.com`.
 ```
 
 ## Development

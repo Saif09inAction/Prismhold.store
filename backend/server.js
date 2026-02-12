@@ -7,7 +7,6 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const { randomUUID } = require('crypto');
 const Razorpay = require('razorpay');
 
@@ -31,52 +30,57 @@ const razorpay = new Razorpay({
 });
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/prismhold';
+// Render + MongoDB Atlas: set MONGO_URI (or MONGODB_URI) in Render environment
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 
-// Middleware
-app.use(cors());
+if (!PORT) {
+    console.warn('PORT not set; defaulting to 3000 for local run');
+}
+const PORT_NUM = Number(PORT) || 3000;
+
+// CORS: allow frontend (Vercel) and local dev
+const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000,https://YOUR_FRONTEND_DOMAIN.vercel.app')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (corsOrigins.some(o => o === origin)) return callback(null, true);
+        callback(null, false);
+    },
+    credentials: true
+}));
 app.use(express.json());
 
-// Configure multer for file uploads - using memory storage to store in MongoDB
+// Configure multer for file uploads - memory storage, images stored in MongoDB
 const storage = multer.memoryStorage();
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// Path configuration
-const FRONTEND_PUBLIC_PATH = path.join(__dirname, '../frontend/public');
-const FRONTEND_ADMIN_PATH = path.join(__dirname, '../frontend/admin');
-const UPLOADS_PATH = path.join(__dirname, 'uploads');
-
-// Serve static files from frontend/public (images, CSS, JS, etc.)
-app.use(express.static(FRONTEND_PUBLIC_PATH));
-// Serve compiled Tailwind CSS from frontend/dist
-const DIST_PATH = path.join(__dirname, '../frontend/dist');
-app.use('/dist', express.static(DIST_PATH));
-// Also serve dist files directly for Vercel compatibility
-app.use(express.static(DIST_PATH));
-app.use('/uploads', express.static(UPLOADS_PATH));
-
-// Serve index.html for root route
+// Root: API-only server (frontend is deployed separately)
 app.get('/', (req, res) => {
-    res.sendFile(path.join(FRONTEND_PUBLIC_PATH, 'index.html'));
+    res.status(200).json({
+        message: 'Prism Hold API',
+        docs: 'Use /api/* for endpoints. Frontend is served separately (e.g. Vercel).',
+        health: '/api/health'
+    });
 });
 
-// Serve admin.html for admin route
-app.get('/admin', (req, res) => {
-    res.sendFile(path.join(FRONTEND_ADMIN_PATH, 'admin.html'));
-});
-
-
-// MongoDB Connection with retry logic for Vercel
+// MongoDB Connection with retry logic
 let mongooseConnected = false;
 
 async function connectMongoDB() {
+    if (!MONGO_URI) {
+        console.error('MONGO_URI or MONGODB_URI must be set');
+        return;
+    }
     try {
-        await mongoose.connect(MONGODB_URI, {
+        await mongoose.connect(MONGO_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
@@ -87,7 +91,7 @@ async function connectMongoDB() {
     } catch (err) {
         mongooseConnected = false;
         console.error('❌ MongoDB connection error:', err.message);
-        console.error('Please check your MONGODB_URI environment variable');
+        console.error('Please check your MONGO_URI / MONGODB_URI environment variable');
         // Retry connection after 2 seconds
         setTimeout(connectMongoDB, 2000);
     }
@@ -1983,14 +1987,14 @@ app.get('/api/health', (req, res) => {
         },
         environment: {
             nodeEnv: process.env.NODE_ENV || 'development',
-            port: PORT,
-            hasMongoUri: !!MONGODB_URI,
+            port: PORT_NUM,
+            hasMongoUri: !!MONGO_URI,
             hasJwtSecret: !!JWT_SECRET
         }
     });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+app.listen(PORT_NUM, () => {
+    console.log(`API server running on port ${PORT_NUM}`);
 });
 
