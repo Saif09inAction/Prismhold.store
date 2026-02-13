@@ -1331,26 +1331,29 @@
         </div>
     </div>
 
-    <!-- Contact Us Chat Modal -->
-    <div id="contact-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeContactModal(event)">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col animate-scale-in border border-gray-100" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center p-6 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-primary flex items-center">
-                    <i data-lucide="message-circle" class="w-5 h-5 mr-2 text-accent"></i>
-                    Contact Us
-                </h3>
-                <button onclick="closeContactModal()" class="p-2 hover:bg-gray-100 rounded-full transition">
-                    <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
+    <!-- Contact Us Chat Modal - full-screen layout (same as admin mobile) -->
+    <div id="contact-modal" class="fixed inset-0 z-50 hidden flex flex-col bg-white" onclick="if(event.target.id === 'contact-modal') closeContactModal(event)">
+        <div class="flex flex-col h-full w-full max-w-2xl mx-auto bg-white" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-3 p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                <button type="button" onclick="closeContactModal()" class="p-2 -ml-1 rounded-lg hover:bg-gray-200 transition min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close">
+                    <i data-lucide="x" class="w-6 h-6 text-gray-700"></i>
                 </button>
+                <div class="flex-1 min-w-0">
+                    <h3 class="text-lg font-bold text-primary flex items-center">
+                        <i data-lucide="message-circle" class="w-5 h-5 mr-2 text-accent"></i>
+                        Contact Us
+                    </h3>
+                    <p class="text-sm text-gray-500">Chat with our support team</p>
+                </div>
             </div>
-            <div id="contact-chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4 min-h-[300px] max-h-[400px] custom-scroll">
+            <div id="contact-chat-messages" class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 custom-scroll" style="-webkit-overflow-scrolling: touch;">
                 <!-- Messages will be loaded here -->
             </div>
-            <div class="p-6 border-t border-gray-200 bg-gray-50">
-                <form id="contact-form" onsubmit="sendContactMessage(event)" class="flex space-x-3">
-                    <input type="text" id="contact-message-input" placeholder="Type your message..." required class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 outline-none bg-white text-gray-900 placeholder-gray-400">
-                    <button type="submit" style="background-color: #2563eb; color: white;" class="px-6 py-3 text-white rounded-xl hover:opacity-90 transition font-medium shadow-lg hover:shadow-xl flex items-center justify-center min-w-[60px]">
-                        <i data-lucide="send" class="w-5 h-5" style="color: white;"></i>
+            <div class="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                <form id="contact-form" onsubmit="sendContactMessage(event)" class="flex gap-3 items-end">
+                    <input type="text" id="contact-message-input" placeholder="Type your message..." required class="flex-1 min-h-[44px] px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none bg-white text-base">
+                    <button type="submit" class="px-5 py-3 bg-accent text-white rounded-xl hover:opacity-90 transition font-medium flex items-center justify-center shrink-0 min-w-[44px] min-h-[44px]">
+                        <i data-lucide="send" class="w-5 h-5"></i>
                     </button>
                 </form>
             </div>
@@ -1409,7 +1412,7 @@
 
     <div id="bill-modal" class="fixed inset-0 bg-black/70 z-[70] hidden flex items-center justify-center p-4" onclick="if(event.target.id === 'bill-modal') document.getElementById('bill-modal').classList.add('hidden')">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
-            <div class="bg-primary p-6 text-white text-center relative shrink-0"><h3 class="font-bold text-xl tracking-[0.2em] mb-1">PRISM HOLD</h3><p class="text-white/70 text-xs uppercase tracking-widest">Official Receipt</p><button onclick="document.getElementById('bill-modal').classList.add('hidden')" class="absolute top-4 right-4 text-white/50 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button></div>
+            <div class="bg-primary p-6 text-white text-center relative shrink-0"><h3 class="font-bold text-xl tracking-[0.2em] mb-1">PRISM HOLD</h3><p class="text-white/70 text-xs uppercase tracking-widest">Official Receipt</p><button onclick="document.getElementById('bill-modal').classList.add('hidden')" class="absolute top-4 right-4 p-1.5 rounded-full bg-gray-800 hover:bg-gray-700 text-white transition-colors" aria-label="Close"><i data-lucide="x" class="w-5 h-5"></i></button></div>
             <div class="p-6 overflow-y-auto custom-scroll flex-grow" id="bill-content"></div>
             <div class="bg-gray-50 p-4 text-center border-t border-gray-100 shrink-0"><button onclick="window.print()" class="text-primary font-bold hover:text-accent flex items-center justify-center w-full py-2"><i data-lucide="printer" class="w-4 h-4 mr-2"></i> Save / Print</button></div>
         </div>
@@ -2480,7 +2483,7 @@
         }
         
         function closeContactModal(e) {
-            if (e && e.target.id !== 'contact-modal') return;
+            if (e && e.target && e.target.id !== 'contact-modal') return;
             document.getElementById('contact-modal').classList.add('hidden');
         }
         

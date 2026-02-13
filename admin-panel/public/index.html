@@ -52,10 +52,9 @@
         .help-chat-input-wrap { min-height: 44px; }
         .help-chat-input-wrap input { min-height: 44px; font-size: 16px; }
         .help-chat-send { min-width: 44px; min-height: 44px; }
-        /* Mobile: full-screen chat overlay */
+        /* Full-screen chat overlay (mobile + PC) */
         #help-chat-mobile-overlay { display: none; position: fixed; inset: 0; z-index: 60; background: #fff; flex-direction: column; }
         #help-chat-mobile-overlay.chat-open { display: flex; }
-        @media (min-width: 1024px) { #help-chat-mobile-overlay { display: none !important; } }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -873,7 +872,7 @@
                     if (id === (currentChatRequestId || '').toString()) {
                         const lastReply = req.replies && req.replies[req.replies.length - 1];
                         if (lastReply && !lastReply.fromAdmin) {
-                            const messagesContainer = document.getElementById(isMobileView() ? 'help-chat-mobile-messages' : 'help-request-chat-messages');
+                            const messagesContainer = document.getElementById('help-chat-mobile-messages');
                             if (messagesContainer) {
                                 const date = new Date(lastReply.createdAt).toLocaleString();
                                 const safeMsg = (lastReply.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -2295,23 +2294,15 @@
                     requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
                 };
                 
-                if (isMobileView()) {
-                    document.getElementById('help-chat-mobile-user').textContent = request.userId?.displayName || request.email || 'User';
-                    document.getElementById('help-chat-mobile-email').textContent = request.email || 'N/A';
-                    const statusSelect = document.getElementById('help-chat-mobile-status');
-                    statusSelect.className = 'text-xs px-2 py-1.5 rounded border border-gray-200 bg-white ' + getStatusColor(request.status);
-                    statusSelect.innerHTML = `<option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option><option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option>`;
-                    statusSelect.value = request.status;
-                    renderMsgs('help-chat-mobile-messages');
-                    document.getElementById('help-chat-mobile-input').classList.remove('hidden');
-                    document.getElementById('help-chat-mobile-overlay').classList.add('chat-open');
-                } else {
-                    const reqId = String(request.id || request._id || '');
-                    const header = document.getElementById('help-request-chat-header');
-                    header.innerHTML = `<div class="flex justify-between items-center w-full"><div class="flex-1 min-w-0"><p class="font-semibold text-gray-900">${(request.userId?.displayName || request.email || 'User').replace(/</g, '&lt;')}</p><p class="text-sm text-gray-500 truncate">${(request.email || 'N/A').replace(/</g, '&lt;')}</p></div><div class="flex items-center gap-2 flex-shrink-0"><select onchange="event.stopPropagation(); updateHelpRequestStatus('${reqId.replace(/'/g, "\\'")}', this.value)" class="text-xs px-3 py-1 rounded ${getStatusColor(request.status)} border border-gray-200"><option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option><option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select><button type="button" onclick="event.stopPropagation(); deleteHelpRequest('${reqId.replace(/'/g, "\\'")}')" class="text-red-600 hover:text-red-800 text-sm px-3 py-1 rounded hover:bg-red-50"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
-                    renderMsgs('help-request-chat-messages');
-                    document.getElementById('help-request-chat-input').classList.remove('hidden');
-                }
+                document.getElementById('help-chat-mobile-user').textContent = request.userId?.displayName || request.email || 'User';
+                document.getElementById('help-chat-mobile-email').textContent = request.email || 'N/A';
+                const statusSelect = document.getElementById('help-chat-mobile-status');
+                statusSelect.className = 'text-xs px-2 py-1.5 rounded border border-gray-200 bg-white ' + getStatusColor(request.status);
+                statusSelect.innerHTML = `<option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option><option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option>`;
+                statusSelect.value = request.status;
+                renderMsgs('help-chat-mobile-messages');
+                document.getElementById('help-chat-mobile-input').classList.remove('hidden');
+                document.getElementById('help-chat-mobile-overlay').classList.add('chat-open');
                 renderHelpRequests(allHelpRequests);
                 createLucideIcons();
             } catch (error) {
@@ -2323,10 +2314,10 @@
         async function sendAdminReply(e) {
             e.preventDefault();
             if (!currentChatRequestId) return;
-            const input = document.getElementById(isMobileView() ? 'admin-reply-input-mobile' : 'admin-reply-input');
+            const input = document.getElementById('admin-reply-input-mobile');
             const message = (input && input.value || '').trim();
             if (!message) return;
-            const messagesContainer = document.getElementById(isMobileView() ? 'help-chat-mobile-messages' : 'help-request-chat-messages');
+            const messagesContainer = document.getElementById('help-chat-mobile-messages');
             if (!messagesContainer) return;
             try {
                 await apiRequest(`/admin/help-requests/${currentChatRequestId}/reply`, {
