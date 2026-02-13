@@ -359,16 +359,19 @@
         const API_BASE = window.API_BASE;
         const API_BASE_URL = `${API_BASE}/api`;
         
-        // Convert Google Drive share links to direct image URLs
+        // Convert image URLs: Google Drive share links to direct, relative /api/images/ to full URL
         function toDirectImageUrl(url) {
             if (!url || typeof url !== 'string') return url || '';
-            if (url.includes('drive.google.com/file/d/')) {
+            // Google Drive: share links return HTML, convert to direct image URL
+            if (url.includes('drive.google.com')) {
                 const m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
                 if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+                const idm = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (idm) return `https://drive.google.com/uc?export=view&id=${idm[1]}`;
             }
-            if (url.includes('drive.google.com') && url.includes('id=')) {
-                const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-                if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+            // Relative API image path -> full URL (frontend may be on different domain than backend)
+            if (url.startsWith('/api/images/') && API_BASE) {
+                return `${API_BASE.replace(/\/api\/?$/, '')}${url}`;
             }
             return url;
         }
@@ -1890,7 +1893,7 @@
         }
         
         function addToCart(id) { 
-            const p = products.find(x => x.id === id); 
+            const p = products.find(x => x.id == id); 
             if (!p) return;
             // Calculate final price with discount
             const finalPrice = p.discount ? p.price * (1 - p.discount / 100) : p.price;
@@ -1917,10 +1920,11 @@
         }
         
         function updateQuantity(id, d) { 
-            const item = cartItems.find(x => x.id === id); 
+            const item = cartItems.find(x => x.id == id); 
             if(!item) return;
-            const p = products.find(x => x.id === id);
-            const avail = Math.max(0, (p && p.stock != null) ? p.stock : (item.stock ?? 999));
+            const p = products.find(x => x.id == id);
+            const avail = Math.max(0, (p != null && p.stock != null) ? p.stock : (item.stock ?? 999));
+            if (avail <= 0) return; // Sold out
             item.quantity += d; 
             if (item.quantity > avail) item.quantity = avail;
             if(item.quantity<=0) {
@@ -2607,10 +2611,11 @@
                 renderCheckoutSummary();
             }
         }
-        function initiateCheckout() { 
+        async function initiateCheckout() { 
             if(!window.currentUser) { alertMessage("Please Login", "info"); toggleAuthModal('login'); return; } 
             const selectedItems = cartItems.filter(i => selectedCartItems.has(i.id));
             if(!selectedItems.length) return alertMessage("Please select items to checkout", "error"); 
+            await loadProducts(); // Refresh stock before checkout
             document.getElementById('cart-modal').classList.remove('open'); 
             document.getElementById('checkout-modal').classList.remove('hidden'); 
             renderCheckoutAddresses(); 
@@ -2655,7 +2660,19 @@
             if(!selectedAddressId) return alertMessage("Select Address", "error");
             const selectedItems = cartItems.filter(i => selectedCartItems.has(i.id));
             if(!selectedItems.length) return alertMessage("Please select items to checkout", "error");
-            
+            // Validate stock before placing order (use fresh products if available)
+            for (const item of selectedItems) {
+                const p = products.find(x => x.id == item.id);
+                const avail = Math.max(0, (p && p.stock != null) ? p.stock : (item.stock ?? 999));
+                if (avail <= 0) {
+                    alertMessage(`${item.name || 'Item'} is sold out`, 'error');
+                    return;
+                }
+                if (item.quantity > avail) {
+                    alertMessage(`Only ${avail} left in stock for ${item.name || 'item'}. Please reduce quantity.`, 'error');
+                    return;
+                }
+            }
             const pay = document.querySelector('input[name="payment_method"]:checked').value;
             const sub = selectedItems.reduce((s,i)=>s+(i.price*i.quantity),0); 
             const totalQty = selectedItems.reduce((s,i)=>s+i.quantity,0);
@@ -2717,6 +2734,7 @@
                                 });
                                 
                                 renderCart(); saveCart();
+                                await loadProducts(); // Refresh products so Sold Out shows correctly
                                 
                                 // Reset promo code
                                 appliedPromoCode = null;
@@ -2763,7 +2781,8 @@
                 }
             } catch(e) { 
                 console.error(e); 
-                alertMessage("Failed to process payment: " + (e.message || "Unknown error"), "error"); 
+                const msg = e.message || "Unknown error";
+                alertMessage((msg.includes('stock') || msg.includes('sold out')) ? msg : "Failed to process payment: " + msg, "error"); 
             }
         }
         
@@ -2846,9 +2865,13 @@
             c.innerHTML=userOrders.length?userOrders.map(o=>{
                 const canCancel = o.status !== 'Cancelled' && o.status !== 'Delivered' && o.status !== 'Shipped' && o.status !== 'Out for delivery';
                 const isShippedOrLater = o.status === 'Shipped' || o.status === 'Out for delivery' || o.status === 'Delivered';
+                const names = (o.items || []).map(i => i.name || 'Product').filter(Boolean);
+                const productNames = names.length > 2 ? names.slice(0, 2).join(', ') + ` +${names.length - 2} more` : names.join(', ') || 'Order';
+                const orderIdShort = (o.id || o._id || '').toString().slice(0,6).toUpperCase();
+                const titleText = productNames ? `${productNames} (#${orderIdShort})` : `#${orderIdShort}`;
                 return `<div class="border border-gray-100 rounded-xl p-4 bg-white shadow-sm mb-3">
                     <div class="flex justify-between mb-2">
-                        <span class="font-bold text-sm">#${o.id.slice(0,6).toUpperCase()}</span>
+                        <span class="font-bold text-sm text-primary">${titleText}</span>
                         <span class="text-[10px] px-2 py-0.5 bg-gray-50 rounded-full font-bold">${o.status}</span>
                     </div>
                     <div class="flex justify-between text-xs text-gray-500 mb-3">

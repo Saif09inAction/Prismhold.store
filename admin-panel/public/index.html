@@ -553,7 +553,7 @@
                             <input type="file" id="product-image-file" accept="image/*" multiple class="hidden" onchange="handleMultipleImageFileSelect(event)">
                             <button type="button" onclick="document.getElementById('product-image-file').click()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm whitespace-nowrap">Upload Images</button>
                             <span class="text-sm text-gray-500 hidden sm:inline">or</span>
-                            <input type="text" id="product-image-url-input" placeholder="Add Image URL" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                            <input type="text" id="product-image-url-input" placeholder="Add Image URL (Google Drive, direct link; max 1MB for uploads)" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
                             <button type="button" onclick="addImageFromUrl()" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm whitespace-nowrap">Add URL</button>
                         </div>
                         <div id="product-images-preview" class="mt-2 space-y-2">
@@ -566,16 +566,6 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
                         <input type="number" id="product-discount" min="0" max="100" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Delivery Fee (₹)</label>
-                        <input type="number" id="product-delivery-fee" min="0" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0">
-                        <p class="text-xs text-gray-400 mt-1">Charged per item. Free if cart meets free delivery quantity.</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Free Delivery Qty (this product)</label>
-                        <input type="number" id="product-free-delivery-qty" min="0" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="0">
-                        <p class="text-xs text-gray-400 mt-1">0 = use global. e.g. 3 = buy 3+ of this product = free delivery for it</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Stock (quantity available)</label>
@@ -908,20 +898,47 @@
         }
         
         // Multiple Images Management
+        const MAX_UPLOAD_SIZE = 1 * 1024 * 1024; // 1MB for device uploads (URLs have no limit)
         let productImages = [];
         let heroImages = [];
         let heroData = {};
         
+        // Helper: convert Google Drive/Photos share links to direct image URLs (share links return HTML, not images)
+        function toDirectImageUrl(url) {
+            if (!url || typeof url !== 'string') return url || '';
+            // Google Drive: drive.google.com/file/d/FILE_ID or drive.google.com/open?id=FILE_ID
+            if (url.includes('drive.google.com')) {
+                const fileMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+                if (fileMatch) return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+                const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (idMatch) return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
+            }
+            // Google Photos direct URLs (lh3.googleusercontent.com) - already usable
+            if (url.includes('lh3.googleusercontent.com')) return url;
+            return url;
+        }
         // Helper function to convert image ID to URL for display
         function getImageUrl(imageIdOrUrl) {
             if (!imageIdOrUrl) return '';
-            // If it's already a URL (starts with /api/images/, /uploads/, or http), return as is
-            if (typeof imageIdOrUrl === 'string' && (imageIdOrUrl.startsWith('/api/images/') || imageIdOrUrl.startsWith('/uploads/') || imageIdOrUrl.startsWith('http'))) {
-                return imageIdOrUrl;
-            }
-            // If it's a MongoDB ObjectId (24 hex characters), convert to API URL
+            // MongoDB ObjectId (24 hex) -> full API URL
             if (typeof imageIdOrUrl === 'string' && /^[0-9a-fA-F]{24}$/.test(imageIdOrUrl)) {
-                return `${API_BASE_URL.replace('/api', '')}/api/images/${imageIdOrUrl}`;
+                const base = API_BASE || (API_BASE_URL || '').replace(/\/api\/?$/, '');
+                return `${base}/api/images/${imageIdOrUrl}`;
+            }
+            // Google Drive/Photos - convert to direct URL for display
+            if (typeof imageIdOrUrl === 'string' && imageIdOrUrl.includes('drive.google.com')) {
+                const direct = toDirectImageUrl(imageIdOrUrl);
+                if (direct) return direct;
+            }
+            // Relative /api/images/ path -> full URL (admin may be on different domain than backend)
+            if (typeof imageIdOrUrl === 'string' && imageIdOrUrl.startsWith('/api/images/')) {
+                const base = API_BASE || (API_BASE_URL || '').replace(/\/api\/?$/, '');
+                return `${base}${imageIdOrUrl}`;
+            }
+            // /uploads/, http(s), or Drive/Photos - convert if needed
+            if (typeof imageIdOrUrl === 'string') {
+                const converted = toDirectImageUrl(imageIdOrUrl);
+                return converted || imageIdOrUrl;
             }
             return imageIdOrUrl;
         }
@@ -989,8 +1006,11 @@
         async function handleHeroImageFileSelect(event) {
             const files = Array.from(event.target.files || []);
             if (!files.length) return;
-
             for (const file of files) {
+                if (file.size > MAX_UPLOAD_SIZE) {
+                    alert(`Image "${file.name}" exceeds 1MB limit. Please use a smaller image or add via URL.`);
+                    continue;
+                }
                 const formData = new FormData();
                 formData.append('image', file);
                 try {
@@ -1021,6 +1041,10 @@
             if (!files.length) return;
             
             for (const file of files) {
+                if (file.size > MAX_UPLOAD_SIZE) {
+                    alert(`Image "${file.name}" exceeds 1MB limit (${(file.size / 1024).toFixed(0)}KB). Please use a smaller image or add via URL.`);
+                    continue;
+                }
                 const formData = new FormData();
                 formData.append('image', file);
                 
@@ -1031,13 +1055,14 @@
                         body: formData
                     });
                     
-                    if (!response.ok) throw new Error('Upload failed');
-                    
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error || 'Upload failed');
+                    }
                     const data = await response.json();
-                    // Use image ID if available, otherwise use URL (for backward compatibility)
                     addProductImage(data.id || data.url);
                 } catch (error) {
-                    alert('Failed to upload image: ' + error.message);
+                    alert('Failed to upload image: ' + (error.message || 'Unknown error'));
                 }
             }
             
@@ -1319,8 +1344,6 @@
                 document.getElementById('product-name').value = product.name || '';
                 document.getElementById('product-price').value = product.price || '';
                 document.getElementById('product-discount').value = product.discount || 0;
-                document.getElementById('product-delivery-fee').value = product.deliveryFee || 0;
-                document.getElementById('product-free-delivery-qty').value = product.freeDeliveryQuantity ?? '';
                 document.getElementById('product-stock').value = product.stock ?? 999;
                 document.getElementById('product-category').value = product.category || '';
                 document.getElementById('product-material').value = product.material || '';
@@ -1353,8 +1376,8 @@
                 name: document.getElementById('product-name').value,
                 price: parseFloat(document.getElementById('product-price').value),
                 discount: parseFloat(document.getElementById('product-discount').value) || 0,
-                deliveryFee: parseFloat(document.getElementById('product-delivery-fee').value) || 0,
-                freeDeliveryQuantity: parseInt(document.getElementById('product-free-delivery-qty').value) || 0,
+                deliveryFee: 0,
+                freeDeliveryQuantity: 0,
                 stock: Math.max(0, parseInt(document.getElementById('product-stock').value) || 999),
                 image: mainImage, // Main image for backward compatibility
                 images: productImages, // All images array
@@ -1615,7 +1638,11 @@
         async function handleCategoryImageFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
+            if (file.size > MAX_UPLOAD_SIZE) {
+                alert(`Image exceeds 1MB limit. Please use a smaller image or add via URL.`);
+                event.target.value = '';
+                return;
+            }
             const formData = new FormData();
             formData.append('image', file);
             
@@ -1626,10 +1653,12 @@
                     body: formData
                 });
                 
-                if (!response.ok) throw new Error('Upload failed');
-                
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || 'Upload failed');
+                }
                 const data = await response.json();
-                categoryCoverImage = data.url;
+                categoryCoverImage = data.id || data.url;
                 renderCategoryCoverImage();
             } catch (error) {
                 alert('Failed to upload image: ' + error.message);

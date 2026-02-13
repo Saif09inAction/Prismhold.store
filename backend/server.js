@@ -75,6 +75,11 @@ const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }
 });
+// Admin upload: max 1MB per file (device uploads only; URL links have no limit)
+const adminUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 1 * 1024 * 1024 }
+});
 
 // Root: API-only server (frontend is deployed separately)
 app.get('/', (req, res) => {
@@ -706,6 +711,25 @@ function verifyRazorpaySignature(orderId, paymentId, signature) {
 
 app.post('/api/orders', authenticateToken, async (req, res) => {
     try {
+        const { items } = req.body || {};
+        if (items && items.length > 0) {
+            for (const item of items) {
+                const product = await Product.findOne({ id: item.id });
+                if (!product) {
+                    return res.status(400).json({ error: `Product ID ${item.id} not found` });
+                }
+                const avail = Math.max(0, product.stock ?? 999);
+                const qty = item.quantity || 0;
+                if (qty > avail) {
+                    return res.status(400).json({
+                        error: `Not enough stock for "${product.name}". Available: ${avail}, requested: ${qty}`
+                    });
+                }
+                if (avail <= 0) {
+                    return res.status(400).json({ error: `"${product.name}" is sold out` });
+                }
+            }
+        }
         const order = new Order({
             userId: req.user._id,
             ...req.body,
@@ -1804,7 +1828,15 @@ app.get('/api/products/recommendations', authenticateToken, async (req, res) => 
 });
 
 // ==================== IMAGE UPLOAD ====================
-app.post('/api/admin/upload', authenticateAdmin, upload.single('image'), async (req, res) => {
+app.post('/api/admin/upload', authenticateAdmin, (req, res, next) => {
+    adminUpload.single('image')(req, res, (err) => {
+        if (err && err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ error: 'Image must be 1MB or less. Use a smaller image or add via URL.' });
+        }
+        if (err) return next(err);
+        next();
+    });
+}, async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
