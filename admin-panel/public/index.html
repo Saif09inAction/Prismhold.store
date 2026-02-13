@@ -52,6 +52,10 @@
         .help-chat-input-wrap { min-height: 44px; }
         .help-chat-input-wrap input { min-height: 44px; font-size: 16px; }
         .help-chat-send { min-width: 44px; min-height: 44px; }
+        /* Mobile: full-screen chat overlay */
+        #help-chat-mobile-overlay { display: none; position: fixed; inset: 0; z-index: 60; background: #fff; flex-direction: column; }
+        #help-chat-mobile-overlay.chat-open { display: flex; }
+        @media (min-width: 1024px) { #help-chat-mobile-overlay { display: none !important; } }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -431,7 +435,50 @@
                 </div>
                 <div class="bg-white rounded-xl shadow overflow-hidden">
                     <div id="help-requests-list" class="p-4 lg:p-6">
-                        <!-- Help requests will be loaded here -->
+                        <div class="help-chat-container grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+                            <div id="help-requests-list-content" class="lg:col-span-1 space-y-3 min-h-[200px] max-h-[320px] lg:max-h-[600px] overflow-y-auto flex-shrink-0" style="-webkit-overflow-scrolling: touch;"></div>
+                            <div id="help-request-chat-desktop" class="hidden lg:flex lg:col-span-2 border border-gray-200 rounded-lg flex-col min-h-[280px] flex-1" style="min-height: 280px; max-height: min(80vh, 520px);">
+                                <div id="help-request-chat-header" class="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                                    <p class="text-center text-gray-500">Select a conversation to view messages</p>
+                                </div>
+                                <div id="help-request-chat-messages" class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-4" style="-webkit-overflow-scrolling: touch;"></div>
+                                <div id="help-request-chat-input" class="p-4 border-t border-gray-200 hidden flex-shrink-0 help-chat-input-wrap">
+                                    <form onsubmit="sendAdminReply(event)" class="flex gap-3 items-end">
+                                        <input type="text" id="admin-reply-input" placeholder="Type your reply..." required class="flex-1 min-h-[44px] px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none text-base">
+                                        <button type="submit" class="help-chat-send px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center justify-center shrink-0">
+                                            <i data-lucide="send" class="w-5 h-5"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Mobile full-screen chat overlay (shown on small screens only) -->
+                <div id="help-chat-mobile-overlay" class="chat-overlay">
+                    <div class="flex flex-col h-full bg-white">
+                        <div id="help-chat-mobile-header" class="flex items-center gap-3 p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                            <button type="button" onclick="closeMobileChatOverlay()" class="p-2 -ml-1 rounded-lg hover:bg-gray-200 transition min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Close chat">
+                                <i data-lucide="x" class="w-6 h-6 text-gray-700"></i>
+                            </button>
+                            <div class="flex-1 min-w-0">
+                                <p id="help-chat-mobile-user" class="font-semibold text-gray-900 truncate">User</p>
+                                <p id="help-chat-mobile-email" class="text-sm text-gray-500 truncate">-</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <select id="help-chat-mobile-status" onchange="updateHelpRequestStatus(currentChatRequestId, this.value)" class="text-xs px-2 py-1.5 rounded border border-gray-200 bg-white"></select>
+                                <button type="button" onclick="deleteHelpRequest(currentChatRequestId)" class="p-2 text-red-600 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                        <div id="help-chat-mobile-messages" class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4" style="-webkit-overflow-scrolling: touch;"></div>
+                        <div id="help-chat-mobile-input" class="p-4 border-t border-gray-200 flex-shrink-0 hidden">
+                            <form onsubmit="sendAdminReply(event)" class="flex gap-3 items-end">
+                                <input type="text" id="admin-reply-input-mobile" placeholder="Type your reply..." required class="flex-1 min-h-[44px] px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 outline-none text-base">
+                                <button type="submit" class="help-chat-send px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center justify-center shrink-0">
+                                    <i data-lucide="send" class="w-5 h-5"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -798,8 +845,27 @@
                 adminSocket.on('product_added', () => {
                     if (currentSection === 'products-section') loadProducts();
                 });
-                adminSocket.on('help_request_message', () => {
-                    loadHelpRequests();
+                adminSocket.on('help_request_message', (data) => {
+                    if (!data || !data.request) return;
+                    const req = data.request;
+                    const id = (req.id || req._id || '').toString();
+                    const idx = allHelpRequests.findIndex(r => (r.id || r._id || '').toString() === id);
+                    const merged = { ...(idx >= 0 ? allHelpRequests[idx] : {}), ...req, id };
+                    if (idx >= 0) allHelpRequests[idx] = merged;
+                    else allHelpRequests.unshift(merged);
+                    if (id === (currentChatRequestId || '').toString()) {
+                        const lastReply = req.replies && req.replies[req.replies.length - 1];
+                        if (lastReply && !lastReply.fromAdmin) {
+                            const messagesContainer = document.getElementById(isMobileView() ? 'help-chat-mobile-messages' : 'help-request-chat-messages');
+                            if (messagesContainer) {
+                                const date = new Date(lastReply.createdAt).toLocaleString();
+                                const safeMsg = (lastReply.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                messagesContainer.insertAdjacentHTML('beforeend', `<div class="flex justify-start help-chat-msg"><div class="max-w-[85%] bg-gray-100 text-gray-900 rounded-2xl px-4 py-3"><p class="text-sm break-words">${safeMsg}</p><p class="text-xs mt-1 text-gray-500">${date}</p></div></div>`);
+                                requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
+                            }
+                        }
+                    }
+                    renderHelpRequests(allHelpRequests);
                 });
             } catch (e) { console.warn('Socket connect failed:', e); }
         }
@@ -2085,8 +2151,8 @@
         let helpRequestsLoading = false;
         async function loadHelpRequests() {
             if (helpRequestsLoading) return;
-            const listEl = document.getElementById('help-requests-list');
-            if (listEl) listEl.innerHTML = '<div class="flex items-center justify-center py-12"><div class="animate-spin rounded-full h-10 w-10 border-2 border-blue-500 border-t-transparent"></div></div>';
+            const listEl = document.getElementById('help-requests-list-content') || document.getElementById('help-requests-list');
+            if (listEl) listEl.innerHTML = '<div class="flex items-center justify-center py-12 col-span-full"><div class="animate-spin rounded-full h-10 w-10 border-2 border-blue-500 border-t-transparent"></div></div>';
             helpRequestsLoading = true;
             try {
                 const requests = await apiRequest('/admin/help-requests');
@@ -2130,125 +2196,84 @@
         window.filterHelpRequests = filterHelpRequests;
         
         function renderHelpRequests(requests) {
-            document.getElementById('help-requests-list').innerHTML = requests.length ? `
-                    <div class="help-chat-container grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
-                        <!-- Chat List -->
-                        <div class="lg:col-span-1 space-y-3 min-h-[200px] max-h-[320px] lg:max-h-[600px] overflow-y-auto flex-shrink-0" style="-webkit-overflow-scrolling: touch;">
-                            ${requests.map(req => {
-                                const allMessages = [
-                                    { message: req.message, fromAdmin: false, createdAt: req.createdAt },
-                                    ...(req.replies || [])
-                                ];
-                                allMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-                                
-                                const lastMessage = allMessages[allMessages.length - 1];
-                                const lastMessageTime = lastMessage.createdAt;
-                                const unreadCount = allMessages.filter(m => !m.fromAdmin).length;
-                                
-                                return `
-                                <div onclick="openHelpRequestChat('${req.id}')" class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition min-h-[44px] touch-manipulation ${currentChatRequestId === req.id ? 'bg-blue-50 border-blue-300' : ''}" role="button" tabindex="0">
-                                    <div class="flex justify-between items-start mb-2">
-                                        <div class="flex-1 min-w-0">
-                                            <p class="font-semibold text-gray-900 truncate">${req.userId?.displayName || req.email || 'User'}</p>
-                                            <p class="text-xs text-gray-500 truncate">${req.subject || 'General Inquiry'}</p>
-                                        </div>
-                                        ${unreadCount > 0 ? `<span class="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">${unreadCount}</span>` : ''}
-                                    </div>
-                                    <p class="text-sm text-gray-600 line-clamp-2 mb-2">${lastMessage.message || lastMessage}</p>
-                                    <div class="flex justify-between items-center">
-                                        <p class="text-xs text-gray-400">${new Date(lastMessageTime).toLocaleString()}</p>
-                                        <span class="text-xs px-2 py-0.5 rounded ${getStatusColor(req.status)}">${req.status}</span>
-                                    </div>
-                                </div>
-                                `;
-                            }).join('')}
+            const listEl = document.getElementById('help-requests-list-content');
+            if (!listEl) return;
+            listEl.innerHTML = requests.length ? requests.map(req => {
+                const allMessages = [
+                    { message: req.message, fromAdmin: false, createdAt: req.createdAt },
+                    ...(req.replies || [])
+                ];
+                allMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                const lastMessage = allMessages[allMessages.length - 1];
+                const lastMessageTime = lastMessage.createdAt;
+                const unreadCount = allMessages.filter(m => !m.fromAdmin).length;
+                return `
+                <div onclick="openHelpRequestChat('${req.id}')" class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition min-h-[44px] touch-manipulation ${currentChatRequestId === req.id ? 'bg-blue-50 border-blue-300' : ''}" role="button" tabindex="0">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-gray-900 truncate">${req.userId?.displayName || req.email || 'User'}</p>
+                            <p class="text-xs text-gray-500 truncate">${req.subject || 'General Inquiry'}</p>
                         </div>
-                        
-                        <!-- Chat Window -->
-                        <div class="lg:col-span-2 border border-gray-200 rounded-lg flex flex-col min-h-[280px] flex-1" style="min-height: 280px; max-height: min(80vh, 520px);">
-                            <div id="help-request-chat-header" class="p-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                                <p class="text-center text-gray-500">Select a conversation to view messages</p>
-                            </div>
-                            <div id="help-request-chat-messages" class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-4" style="-webkit-overflow-scrolling: touch;">
-                                <!-- Messages will be loaded here -->
-                            </div>
-                            <div id="help-request-chat-input" class="p-4 border-t border-gray-200 hidden flex-shrink-0 help-chat-input-wrap">
-                                <form onsubmit="sendAdminReply(event)" class="flex gap-3 items-end">
-                                    <input type="text" id="admin-reply-input" placeholder="Type your reply..." required class="flex-1 min-h-[44px] px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none text-base">
-                                    <button type="submit" class="help-chat-send px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center justify-center shrink-0">
-                                        <i data-lucide="send" class="w-5 h-5"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
+                        ${unreadCount > 0 ? `<span class="ml-2 bg-red-500 text-white text-xs rounded-full px-2 py-0.5">${unreadCount}</span>` : ''}
                     </div>
-                ` : '<p class="text-center text-gray-500 py-8">No help requests found</p>';
+                    <p class="text-sm text-gray-600 line-clamp-2 mb-2">${lastMessage.message || lastMessage}</p>
+                    <div class="flex justify-between items-center">
+                        <p class="text-xs text-gray-400">${new Date(lastMessageTime).toLocaleString()}</p>
+                        <span class="text-xs px-2 py-0.5 rounded ${getStatusColor(req.status)}">${req.status}</span>
+                    </div>
+                </div>
+                `;
+            }).join('') : '<p class="text-center text-gray-500 py-8">No help requests found</p>';
         }
         
+        function isMobileView() { return window.innerWidth < 1024; }
+        function closeMobileChatOverlay() {
+            document.getElementById('help-chat-mobile-overlay').classList.remove('chat-open');
+            currentChatRequestId = null;
+            renderHelpRequests(allHelpRequests);
+        }
         async function openHelpRequestChat(requestId) {
             currentChatRequestId = requestId;
             try {
-                // Use stored allHelpRequests or fetch if needed
                 const requests = allHelpRequests.length ? allHelpRequests : await apiRequest('/admin/help-requests');
                 if (!allHelpRequests.length) allHelpRequests = requests;
                 const request = requests.find(r => r.id === requestId);
+                if (!request) { alert('Request not found'); return; }
                 
-                if (!request) {
-                    alert('Request not found');
-                    return;
-                }
-                
-                // Update header
-                const header = document.getElementById('help-request-chat-header');
-                header.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="font-semibold text-gray-900">${request.userId?.displayName || request.email || 'User'}</p>
-                            <p class="text-sm text-gray-500">${request.email || 'N/A'}</p>
-                        </div>
-                        <div class="flex items-center space-x-3">
-                            <select onchange="updateHelpRequestStatus('${request.id}', this.value)" class="text-xs px-3 py-1 rounded ${getStatusColor(request.status)} border-0">
-                                <option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                <option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                                <option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
-                            </select>
-                            <button onclick="deleteHelpRequest('${request.id}')" class="text-red-600 hover:text-red-800 text-sm px-3 py-1 rounded hover:bg-red-50">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                // Render messages
-                const messagesContainer = document.getElementById('help-request-chat-messages');
                 const messages = [
-                    { message: request.message, fromAdmin: false, createdAt: request.createdAt, subject: request.subject }
+                    { message: request.message, fromAdmin: false, createdAt: request.createdAt, subject: request.subject },
+                    ...(request.replies || [])
                 ];
-                
-                if (request.replies && request.replies.length > 0) {
-                    messages.push(...request.replies);
-                }
-                
                 messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
                 
-                messagesContainer.innerHTML = messages.map(msg => {
-                    const isAdmin = msg.fromAdmin;
-                    const date = new Date(msg.createdAt).toLocaleString();
-                    return `
-                        <div class="flex ${isAdmin ? 'justify-end' : 'justify-start'} help-chat-msg">
-                            <div class="max-w-[85%] ${isAdmin ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-2xl px-4 py-3 word-break-break-word">
-                                ${msg.subject && !isAdmin ? `<p class="text-xs ${isAdmin ? 'text-white/70' : 'text-gray-500'} mb-1 font-semibold">${msg.subject}</p>` : ''}
-                                <p class="text-sm break-words">${msg.message}</p>
-                                <p class="text-xs mt-1 ${isAdmin ? 'text-white/70' : 'text-gray-500'}">${date}</p>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
+                const renderMsgs = (containerId) => {
+                    const el = document.getElementById(containerId);
+                    if (!el) return;
+                    el.innerHTML = messages.map(msg => {
+                        const isAdmin = msg.fromAdmin;
+                        const date = new Date(msg.createdAt).toLocaleString();
+                        return `<div class="flex ${isAdmin ? 'justify-end' : 'justify-start'} help-chat-msg"><div class="max-w-[85%] ${isAdmin ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-2xl px-4 py-3 word-break-break-word">${msg.subject && !isAdmin ? `<p class="text-xs text-gray-500 mb-1 font-semibold">${msg.subject}</p>` : ''}<p class="text-sm break-words">${(msg.message || '').replace(/</g, '&lt;')}</p><p class="text-xs mt-1 ${isAdmin ? 'text-white/70' : 'text-gray-500'}">${date}</p></div></div>`;
+                    }).join('');
+                    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+                };
                 
-                // Show input
-                document.getElementById('help-request-chat-input').classList.remove('hidden');
-                
+                if (isMobileView()) {
+                    document.getElementById('help-chat-mobile-user').textContent = request.userId?.displayName || request.email || 'User';
+                    document.getElementById('help-chat-mobile-email').textContent = request.email || 'N/A';
+                    const statusSelect = document.getElementById('help-chat-mobile-status');
+                    statusSelect.className = 'text-xs px-2 py-1.5 rounded border border-gray-200 bg-white ' + getStatusColor(request.status);
+                    statusSelect.innerHTML = `<option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option><option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option>`;
+                    statusSelect.value = request.status;
+                    renderMsgs('help-chat-mobile-messages');
+                    document.getElementById('help-chat-mobile-input').classList.remove('hidden');
+                    document.getElementById('help-chat-mobile-overlay').classList.add('chat-open');
+                } else {
+                    const header = document.getElementById('help-request-chat-header');
+                    header.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-semibold text-gray-900">${request.userId?.displayName || request.email || 'User'}</p><p class="text-sm text-gray-500">${request.email || 'N/A'}</p></div><div class="flex items-center space-x-3"><select onchange="updateHelpRequestStatus('${request.id}', this.value)" class="text-xs px-3 py-1 rounded ${getStatusColor(request.status)} border-0"><option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option><option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select><button onclick="deleteHelpRequest('${request.id}')" class="text-red-600 hover:text-red-800 text-sm px-3 py-1 rounded hover:bg-red-50"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+                    renderMsgs('help-request-chat-messages');
+                    document.getElementById('help-request-chat-input').classList.remove('hidden');
+                }
+                renderHelpRequests(allHelpRequests);
                 createLucideIcons();
             } catch (error) {
                 console.error('Failed to load chat:', error);
@@ -2259,20 +2284,22 @@
         async function sendAdminReply(e) {
             e.preventDefault();
             if (!currentChatRequestId) return;
-            const input = document.getElementById('admin-reply-input');
-            const message = input.value.trim();
+            const input = document.getElementById(isMobileView() ? 'admin-reply-input-mobile' : 'admin-reply-input');
+            const message = (input && input.value || '').trim();
             if (!message) return;
-            const messagesContainer = document.getElementById('help-request-chat-messages');
+            const messagesContainer = document.getElementById(isMobileView() ? 'help-chat-mobile-messages' : 'help-request-chat-messages');
+            if (!messagesContainer) return;
             try {
                 await apiRequest(`/admin/help-requests/${currentChatRequestId}/reply`, {
                     method: 'POST',
                     body: JSON.stringify({ message })
                 });
-                input.value = '';
-                var date = new Date().toLocaleString();
-                var html = `<div class="flex justify-end help-chat-msg"><div class="max-w-[85%] bg-blue-600 text-white rounded-2xl px-4 py-3 word-break-break-word"><p class="text-sm break-words">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p><p class="text-xs mt-1 text-white/70">${date}</p></div></div>`;
+                if (input) input.value = '';
+                const date = new Date().toLocaleString();
+                const safeMsg = (message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const html = `<div class="flex justify-end help-chat-msg"><div class="max-w-[85%] bg-blue-600 text-white rounded-2xl px-4 py-3 word-break-break-word"><p class="text-sm break-words">${safeMsg}</p><p class="text-xs mt-1 text-white/70">${date}</p></div></div>`;
                 messagesContainer.insertAdjacentHTML('beforeend', html);
-                var req = allHelpRequests.find(r => r.id === currentChatRequestId);
+                const req = allHelpRequests.find(r => r.id === currentChatRequestId);
                 if (req) { req.replies = req.replies || []; req.replies.push({ message, fromAdmin: true, createdAt: new Date().toISOString() }); }
                 requestAnimationFrame(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; });
                 createLucideIcons();
@@ -2282,31 +2309,39 @@
         }
 
         async function updateHelpRequestStatus(id, status) {
+            if (!id) return;
             try {
                 await apiRequest(`/admin/help-requests/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+                const req = allHelpRequests.find(r => r.id === id);
+                if (req) req.status = status;
                 if (currentChatRequestId === id) {
-                    await openHelpRequestChat(id);
+                    const statusEl = document.getElementById('help-chat-mobile-status');
+                    if (statusEl) statusEl.value = status;
                 }
-                await loadHelpRequests();
+                renderHelpRequests(allHelpRequests);
             } catch (error) {
                 alert('Failed to update help request: ' + error.message);
             }
         }
 
         async function deleteHelpRequest(id) {
-            if (confirm('Delete this help request?')) {
-                try {
-                    await apiRequest(`/admin/help-requests/${id}`, { method: 'DELETE' });
-                    if (currentChatRequestId === id) {
-                        currentChatRequestId = null;
-                        document.getElementById('help-request-chat-header').innerHTML = '<p class="text-center text-gray-500">Select a conversation to view messages</p>';
-                        document.getElementById('help-request-chat-messages').innerHTML = '';
-                        document.getElementById('help-request-chat-input').classList.add('hidden');
-                    }
-                    await loadHelpRequests();
-                } catch (error) {
-                    alert('Failed to delete help request: ' + error.message);
+            if (!id || !confirm('Delete this help request?')) return;
+            try {
+                await apiRequest(`/admin/help-requests/${id}`, { method: 'DELETE' });
+                allHelpRequests = allHelpRequests.filter(r => r.id !== id);
+                if (currentChatRequestId === id) {
+                    currentChatRequestId = null;
+                    document.getElementById('help-chat-mobile-overlay').classList.remove('chat-open');
+                    const header = document.getElementById('help-request-chat-header');
+                    const messages = document.getElementById('help-request-chat-messages');
+                    const input = document.getElementById('help-request-chat-input');
+                    if (header) header.innerHTML = '<p class="text-center text-gray-500">Select a conversation to view messages</p>';
+                    if (messages) messages.innerHTML = '';
+                    if (input) input.classList.add('hidden');
                 }
+                renderHelpRequests(allHelpRequests);
+            } catch (error) {
+                alert('Failed to delete help request: ' + error.message);
             }
         }
 
