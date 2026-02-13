@@ -1927,25 +1927,22 @@
                 ? allOrders 
                 : allOrders.filter(o => (o.status || 'Processing') === currentOrderFilter);
             
-            // Filter by date range
+            // Filter by date range (date-only comparison to avoid timezone issues)
             const dateFromEl = document.getElementById('orders-date-from');
             const dateToEl = document.getElementById('orders-date-to');
+            const getOrderDateStr = (o) => {
+                const d = o.createdAt ? new Date(o.createdAt) : (o.date ? new Date(o.date) : null);
+                if (!d || isNaN(d.getTime())) return '';
+                const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
             if (dateFromEl && dateFromEl.value) {
-                const from = new Date(dateFromEl.value);
-                from.setHours(0, 0, 0, 0);
-                filteredOrders = filteredOrders.filter(o => {
-                    const d = new Date(o.createdAt || o.date);
-                    d.setHours(0, 0, 0, 0);
-                    return d >= from;
-                });
+                const fromStr = dateFromEl.value;
+                filteredOrders = filteredOrders.filter(o => getOrderDateStr(o) >= fromStr);
             }
             if (dateToEl && dateToEl.value) {
-                const to = new Date(dateToEl.value);
-                to.setHours(23, 59, 59, 999);
-                filteredOrders = filteredOrders.filter(o => {
-                    const d = new Date(o.createdAt || o.date);
-                    return d <= to;
-                });
+                const toStr = dateToEl.value;
+                filteredOrders = filteredOrders.filter(o => getOrderDateStr(o) <= toStr);
             }
             // Then filter by search term (supports # prefix and full IDs)
             const searchInput = document.getElementById('orders-search');
