@@ -367,12 +367,20 @@
             <!-- Orders Section -->
             <div id="orders-section" class="section hidden">
                 <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-4 lg:mb-6">Orders</h2>
-                <div class="mb-4">
-                    <div class="relative">
-                        <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"></i>
-                        <input type="text" id="orders-search" placeholder="Search orders by order ID, customer email, name..." 
-                            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            oninput="filterOrders()">
+                <div class="mb-4 space-y-3">
+                    <div class="flex flex-wrap gap-3 items-center">
+                        <div class="relative flex-1 min-w-[200px]">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                            <input type="text" id="orders-search" placeholder="Search orders by order ID, customer email, name..." 
+                                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                oninput="filterOrders()">
+                        </div>
+                        <div class="flex gap-2 items-center flex-wrap">
+                            <input type="date" id="orders-date-from" onchange="filterOrders()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <span class="text-gray-500">to</span>
+                            <input type="date" id="orders-date-to" onchange="filterOrders()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <button type="button" onclick="document.getElementById('orders-date-from').value=''; document.getElementById('orders-date-to').value=''; filterOrders();" class="text-sm text-blue-600 hover:underline">Clear dates</button>
+                        </div>
                     </div>
                 </div>
                 <div class="bg-white rounded-xl shadow overflow-hidden">
@@ -509,7 +517,16 @@
 
             <!-- Earnings Section -->
             <div id="earnings-section" class="section hidden">
-                <h2 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-4 lg:mb-6">Earnings</h2>
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-4 lg:mb-6">
+                    <h2 class="text-2xl lg:text-3xl font-bold text-gray-900">Earnings</h2>
+                    <div class="flex gap-2 items-center">
+                        <select id="earnings-month" onchange="loadEarnings()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">All time</option>
+                            <option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                        </select>
+                        <select id="earnings-year" onchange="loadEarnings()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm"></select>
+                    </div>
+                </div>
                 <div id="earnings-container" class="space-y-6">
                     <!-- Stats cards -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1911,6 +1928,26 @@
                 ? allOrders 
                 : allOrders.filter(o => (o.status || 'Processing') === currentOrderFilter);
             
+            // Filter by date range
+            const dateFromEl = document.getElementById('orders-date-from');
+            const dateToEl = document.getElementById('orders-date-to');
+            if (dateFromEl && dateFromEl.value) {
+                const from = new Date(dateFromEl.value);
+                from.setHours(0, 0, 0, 0);
+                filteredOrders = filteredOrders.filter(o => {
+                    const d = new Date(o.createdAt || o.date);
+                    d.setHours(0, 0, 0, 0);
+                    return d >= from;
+                });
+            }
+            if (dateToEl && dateToEl.value) {
+                const to = new Date(dateToEl.value);
+                to.setHours(23, 59, 59, 999);
+                filteredOrders = filteredOrders.filter(o => {
+                    const d = new Date(o.createdAt || o.date);
+                    return d <= to;
+                });
+            }
             // Then filter by search term (supports # prefix and full IDs)
             const searchInput = document.getElementById('orders-search');
             if (searchInput) {
@@ -2207,8 +2244,9 @@
                 const lastMessage = allMessages[allMessages.length - 1];
                 const lastMessageTime = lastMessage.createdAt;
                 const unreadCount = allMessages.filter(m => !m.fromAdmin).length;
+                const reqId = String(req.id || req._id || '');
                 return `
-                <div onclick="openHelpRequestChat('${req.id}')" class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition min-h-[44px] touch-manipulation ${currentChatRequestId === req.id ? 'bg-blue-50 border-blue-300' : ''}" role="button" tabindex="0">
+                <div onclick="event.stopPropagation(); openHelpRequestChat('${reqId.replace(/'/g, "\\'")}')" class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition min-h-[44px] touch-manipulation ${String(currentChatRequestId || '') === reqId ? 'bg-blue-50 border-blue-300' : ''}" role="button" tabindex="0">
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex-1 min-w-0">
                             <p class="font-semibold text-gray-900 truncate">${req.userId?.displayName || req.email || 'User'}</p>
@@ -2237,7 +2275,7 @@
             try {
                 const requests = allHelpRequests.length ? allHelpRequests : await apiRequest('/admin/help-requests');
                 if (!allHelpRequests.length) allHelpRequests = requests;
-                const request = requests.find(r => r.id === requestId);
+                const request = requests.find(r => String(r.id || r._id) === String(requestId));
                 if (!request) { alert('Request not found'); return; }
                 
                 const messages = [
@@ -2268,8 +2306,9 @@
                     document.getElementById('help-chat-mobile-input').classList.remove('hidden');
                     document.getElementById('help-chat-mobile-overlay').classList.add('chat-open');
                 } else {
+                    const reqId = String(request.id || request._id || '');
                     const header = document.getElementById('help-request-chat-header');
-                    header.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-semibold text-gray-900">${request.userId?.displayName || request.email || 'User'}</p><p class="text-sm text-gray-500">${request.email || 'N/A'}</p></div><div class="flex items-center space-x-3"><select onchange="updateHelpRequestStatus('${request.id}', this.value)" class="text-xs px-3 py-1 rounded ${getStatusColor(request.status)} border-0"><option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option><option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select><button onclick="deleteHelpRequest('${request.id}')" class="text-red-600 hover:text-red-800 text-sm px-3 py-1 rounded hover:bg-red-50"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+                    header.innerHTML = `<div class="flex justify-between items-center w-full"><div class="flex-1 min-w-0"><p class="font-semibold text-gray-900">${(request.userId?.displayName || request.email || 'User').replace(/</g, '&lt;')}</p><p class="text-sm text-gray-500 truncate">${(request.email || 'N/A').replace(/</g, '&lt;')}</p></div><div class="flex items-center gap-2 flex-shrink-0"><select onchange="event.stopPropagation(); updateHelpRequestStatus('${reqId.replace(/'/g, "\\'")}', this.value)" class="text-xs px-3 py-1 rounded ${getStatusColor(request.status)} border border-gray-200"><option ${request.status === 'Pending' ? 'selected' : ''}>Pending</option><option ${request.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${request.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select><button type="button" onclick="event.stopPropagation(); deleteHelpRequest('${reqId.replace(/'/g, "\\'")}')" class="text-red-600 hover:text-red-800 text-sm px-3 py-1 rounded hover:bg-red-50"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
                     renderMsgs('help-request-chat-messages');
                     document.getElementById('help-request-chat-input').classList.remove('hidden');
                 }
@@ -2358,7 +2397,16 @@
 
         async function loadEarnings() {
             try {
-                const data = await apiRequest('/admin/earnings');
+                const monthEl = document.getElementById('earnings-month');
+                const yearEl = document.getElementById('earnings-year');
+                if (yearEl && !yearEl.options.length) {
+                    const y = new Date().getFullYear();
+                    for (let i = y; i >= y - 5; i--) yearEl.innerHTML += `<option value="${i}" ${i === y ? 'selected' : ''}>${i}</option>`;
+                }
+                const month = monthEl && monthEl.value ? monthEl.value : '';
+                const year = yearEl && yearEl.value ? yearEl.value : '';
+                const qs = [month ? `month=${month}` : '', year ? `year=${year}` : ''].filter(Boolean).join('&');
+                const data = await apiRequest('/admin/earnings' + (qs ? '?' + qs : ''));
                 document.getElementById('earnings-gross').textContent = formatCurrency(data.grossRevenue);
                 document.getElementById('earnings-delivery').textContent = formatCurrency(data.totalDeliveryCollected);
                 document.getElementById('earnings-qty').textContent = (data.totalQuantitySold || 0).toLocaleString();

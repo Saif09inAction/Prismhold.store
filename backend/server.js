@@ -1381,7 +1381,15 @@ app.put('/api/admin/settings', authenticateAdmin, async (req, res) => {
 
 app.get('/api/admin/earnings', authenticateAdmin, async (req, res) => {
     try {
-        const orders = await Order.find({ paymentStatus: 'Success' });
+        const query = { paymentStatus: 'Success' };
+        const month = parseInt(req.query.month, 10);
+        const year = parseInt(req.query.year, 10);
+        if (month >= 1 && month <= 12 && year) {
+            const start = new Date(year, month - 1, 1);
+            const end = new Date(year, month, 0, 23, 59, 59, 999);
+            query.createdAt = { $gte: start, $lte: end };
+        }
+        const orders = await Order.find(query);
         const settings = await Settings.findOne();
         const razorpayFeePct = (settings && settings.razorpayFeePercent) || 0;
         const deliveryCharges = (settings && settings.deliveryChargesAmount) || 0;
@@ -1877,13 +1885,14 @@ app.get('/api/products/recommendations', authenticateToken, async (req, res) => 
             recommendations = [...recommendations, ...popular];
         }
         
-        res.json(recommendations);
+        const recommendationsWithUrls = recommendations.map(p => convertProductImages(p));
+        res.json(recommendationsWithUrls);
     } catch (error) {
         console.error('Get recommendations error:', error);
         // Return most popular if error
         try {
             const popular = await Product.find().sort({ orders: -1, views: -1 }).limit(8);
-            res.json(popular);
+            res.json(popular.map(p => convertProductImages(p)));
         } catch (e) {
             res.status(500).json({ error: 'Failed to get recommendations' });
         }
