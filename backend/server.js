@@ -11,6 +11,7 @@ const multer = require('multer');
 const path = require('path');
 const { randomUUID } = require('crypto');
 const Razorpay = require('razorpay');
+const sharp = require('sharp');
 const { Server: SocketServer } = require('socket.io');
 
 // Razorpay Payment Gateway Configuration
@@ -79,10 +80,15 @@ const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }
 });
-// Admin upload: max 1MB per file (device uploads only; URL links have no limit)
+// Admin upload: max 10MB; compress with Sharp to ~300-400KB. Reject non-image.
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const adminUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 1 * 1024 * 1024 }
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype && ALLOWED_IMAGE_TYPES.includes(file.mimetype)) return cb(null, true);
+        cb(new Error('Only image files (JPEG, PNG, WebP, GIF) are allowed'));
+    }
 });
 
 // Root: API-only server (frontend is deployed separately)
@@ -1340,9 +1346,12 @@ app.get('/api/settings', async (req, res) => {
         if (!s) {
             s = await Settings.findOneAndUpdate({}, {}, { upsert: true, new: true });
         }
-        res.json({ freeDeliveryQuantity: (s && s.freeDeliveryQuantity) || 0 });
+        res.json({
+            freeDeliveryQuantity: (s && s.freeDeliveryQuantity) || 0,
+            deliveryChargesAmount: (s && s.deliveryChargesAmount) != null ? s.deliveryChargesAmount : 0
+        });
     } catch (e) {
-        res.json({ freeDeliveryQuantity: 0 });
+        res.json({ freeDeliveryQuantity: 0, deliveryChargesAmount: 0 });
     }
 });
 
@@ -1510,10 +1519,11 @@ app.get('/api/admin/help-requests', authenticateAdmin, async (req, res) => {
     try {
         const requests = await HelpRequest.find()
             .populate('userId', 'email displayName')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
         res.json(requests.map(req => ({
             id: req._id.toString(),
-            ...req.toObject()
+            ...req
         })));
     } catch (error) {
         console.error('Get help requests error:', error);
@@ -1651,20 +1661,18 @@ app.get('/api/admin/stats', authenticateAdmin, async (req, res) => {
         ]);
         
         const recentOrders = await Order.find()
+            .select('total status createdAt userId')
             .sort({ createdAt: -1 })
             .limit(5)
-            .populate('userId', 'email displayName');
-        
+            .populate('userId', 'email displayName')
+            .lean();
         res.json({
             totalUsers,
             totalOrders,
             totalProducts,
             pendingHelpRequests,
             totalRevenue: totalRevenue[0]?.total || 0,
-            recentOrders: recentOrders.map(order => ({
-                id: order._id.toString(),
-                ...order.toObject()
-            }))
+            recentOrders: recentOrders.map(order => ({ id: order._id.toString(), ...order }))
         });
     } catch (error) {
         console.error('Get stats error:', error);
@@ -1886,7 +1894,10 @@ app.get('/api/products/recommendations', authenticateToken, async (req, res) => 
 app.post('/api/admin/upload', authenticateAdmin, (req, res, next) => {
     adminUpload.single('image')(req, res, (err) => {
         if (err && err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(413).json({ error: 'Image must be 1MB or less. Use a smaller image or add via URL.' });
+            return res.status(413).json({ error: 'Image must be 10MB or less.' });
+        }
+        if (err && err.message) {
+            return res.status(400).json({ error: err.message });
         }
         if (err) return next(err);
         next();
@@ -1896,20 +1907,47 @@ app.post('/api/admin/upload', authenticateAdmin, (req, res, next) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        
-        // Save image to MongoDB
+        const TARGET_MAX_BYTES = 400 * 1024;
+        const MAX_WIDTH = 1200;
+        let buffer = req.file.buffer;
+        let mimeType = req.file.mimetype;
+        let ext = path.extname(req.file.originalname).toLowerCase();
+
+        const compressImage = async () => {
+            let pipeline = sharp(buffer).rotate();
+            const meta = await sharp(buffer).metadata().catch(() => ({}));
+            const w = meta.width || 0;
+            if (w > MAX_WIDTH) pipeline = pipeline.resize(MAX_WIDTH, null, { withoutEnlargement: true });
+            let webpBuf = await pipeline.clone().webp({ quality: 82, effort: 4 }).toBuffer();
+            let jpegBuf = await pipeline.clone().jpeg({ quality: 85, mozjpeg: true }).toBuffer();
+            for (let q = 80; (webpBuf.length > TARGET_MAX_BYTES || jpegBuf.length > TARGET_MAX_BYTES) && q >= 50; q -= 10) {
+                webpBuf = await pipeline.clone().webp({ quality: q, effort: 4 }).toBuffer();
+                jpegBuf = await pipeline.clone().jpeg({ quality: q, mozjpeg: true }).toBuffer();
+            }
+            const useWebp = webpBuf.length <= jpegBuf.length;
+            return {
+                data: useWebp ? webpBuf : jpegBuf,
+                mimeType: useWebp ? 'image/webp' : 'image/jpeg',
+                ext: useWebp ? '.webp' : '.jpg'
+            };
+        };
+
+        const compressed = await compressImage();
+        buffer = compressed.data;
+        mimeType = compressed.mimeType;
+        ext = compressed.ext;
+        const filename = `${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+
         const image = new Image({
-            filename: `${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`,
+            filename,
             originalName: req.file.originalname,
-            mimeType: req.file.mimetype,
-            data: req.file.buffer,
-            size: req.file.size
+            mimeType,
+            data: buffer,
+            size: buffer.length
         });
-        
         await image.save();
-        
-        // Return image ID instead of file path
-        res.json({ 
+
+        res.json({
             url: `/api/images/${image._id}`,
             id: image._id.toString()
         });
