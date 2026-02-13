@@ -1,7 +1,9 @@
 require('dotenv').config();
+const http = require('http');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const compression = require('compression');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
@@ -9,6 +11,7 @@ const multer = require('multer');
 const path = require('path');
 const { randomUUID } = require('crypto');
 const Razorpay = require('razorpay');
+const { Server: SocketServer } = require('socket.io');
 
 // Razorpay Payment Gateway Configuration
 // Get these from Razorpay Dashboard: https://dashboard.razorpay.com
@@ -67,6 +70,7 @@ app.use(cors({
     },
     credentials: true
 }));
+app.use(compression());
 app.use(express.json());
 
 // Configure multer for file uploads - memory storage, images stored in MongoDB
@@ -198,6 +202,11 @@ const productSchema = new mongoose.Schema({
     favorites: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
 });
+productSchema.index({ id: 1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({ category: 1 });
+productSchema.index({ views: -1 });
+productSchema.index({ orders: -1 });
 
 const categorySchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true },
@@ -220,6 +229,7 @@ const helpRequestSchema = new mongoose.Schema({
     }],
     createdAt: { type: Date, default: Date.now }
 });
+helpRequestSchema.index({ userId: 1, createdAt: -1 });
 
 const promoCodeSchema = new mongoose.Schema({
     code: { type: String, required: true, unique: true, uppercase: true },
@@ -288,6 +298,15 @@ const HelpRequest = mongoose.model('HelpRequest', helpRequestSchema);
 const PromoCode = mongoose.model('PromoCode', promoCodeSchema);
 const Hero = mongoose.model('Hero', heroSchema);
 const Image = mongoose.model('Image', imageSchema);
+
+// In-memory cache for public products API (TTL 60s) – invalidated on product add/update/delete
+let productsCache = null;
+let productsCacheTime = 0;
+const PRODUCTS_CACHE_TTL_MS = 60 * 1000;
+function invalidateProductsCache() {
+    productsCache = null;
+    productsCacheTime = 0;
+}
 
 // Helper function to convert Google Drive share links to direct image URLs
 function convertGoogleDriveToDirectUrl(url) {
@@ -1216,6 +1235,9 @@ app.post('/api/admin/products', authenticateAdmin, async (req, res) => {
     try {
         const product = new Product(req.body);
         await product.save();
+        invalidateProductsCache();
+        const io = req.app.get('io');
+        if (io) io.emit('product_added');
         res.json(convertProductImages(product));
     } catch (error) {
         console.error('Create product error:', error);
@@ -1233,6 +1255,9 @@ app.put('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
         if (!product) {
             return res.status(404).json({ error: 'Product not found' });
         }
+        invalidateProductsCache();
+        const io = req.app.get('io');
+        if (io) io.emit('product_added');
         res.json(convertProductImages(product));
     } catch (error) {
         console.error('Update product error:', error);
@@ -1246,6 +1271,9 @@ app.delete('/api/admin/products/:id', authenticateAdmin, async (req, res) => {
         if (!product) {
             return res.status(404).json({ error: 'Product not found' });
         }
+        invalidateProductsCache();
+        const io = req.app.get('io');
+        if (io) io.emit('product_added');
         res.json({ success: true });
     } catch (error) {
         console.error('Delete product error:', error);
@@ -1501,7 +1529,10 @@ app.post('/api/help-requests', authenticateToken, async (req, res) => {
             ...req.body
         });
         await helpRequest.save();
-        res.json({ id: helpRequest._id.toString(), ...helpRequest.toObject() });
+        const payload = { id: helpRequest._id.toString(), ...helpRequest.toObject() };
+        const io = req.app.get('io');
+        if (io) io.emit('help_request_message', { requestId: payload.id, request: payload });
+        res.json(payload);
     } catch (error) {
         console.error('Create help request error:', error);
         res.status(500).json({ error: 'Failed to create help request' });
@@ -1540,8 +1571,10 @@ app.post('/api/help-requests/:id/reply', authenticateToken, async (req, res) => 
             createdAt: new Date()
         });
         await helpRequest.save();
-        
-        res.json({ id: helpRequest._id.toString(), ...helpRequest.toObject() });
+        const payload = { id: helpRequest._id.toString(), ...helpRequest.toObject() };
+        const io = req.app.get('io');
+        if (io) io.emit('help_request_message', { requestId: payload.id, request: payload });
+        res.json(payload);
     } catch (error) {
         console.error('Add reply error:', error);
         res.status(500).json({ error: 'Failed to add reply' });
@@ -1564,8 +1597,10 @@ app.post('/api/admin/help-requests/:id/reply', authenticateAdmin, async (req, re
         });
         helpRequest.status = 'In Progress';
         await helpRequest.save();
-        
-        res.json({ id: helpRequest._id.toString(), ...helpRequest.toObject() });
+        const payload = { id: helpRequest._id.toString(), ...helpRequest.toObject() };
+        const io = req.app.get('io');
+        if (io) io.emit('help_request_message', { requestId: payload.id, request: payload });
+        res.json(payload);
     } catch (error) {
         console.error('Add admin reply error:', error);
         res.status(500).json({ error: 'Failed to add reply' });
@@ -1657,12 +1692,28 @@ app.get('/api/products', async (req, res) => {
                 details: 'Please check server logs and MongoDB connection'
             });
         }
-        const products = await Product.find().sort({ id: 1 });
-        console.log(`[API] GET /api/products - Returning ${products.length} products`);
-        res.json(products);
+        const now = Date.now();
+        const limit = Math.min(parseInt(req.query.limit, 10) || 0, 200) || 0;
+        const skip = Math.max(0, parseInt(req.query.skip, 10) || 0);
+        const usePagination = limit > 0;
+        if (!usePagination && productsCache && (now - productsCacheTime) < PRODUCTS_CACHE_TTL_MS) {
+            res.set('Cache-Control', 'public, max-age=60');
+            return res.json(productsCache);
+        }
+        const query = Product.find().sort({ id: 1 }).lean();
+        if (usePagination) {
+            query.skip(skip).limit(limit);
+        }
+        const products = await query;
+        const productsWithUrls = products.map(p => convertProductImages(p));
+        if (!usePagination) {
+            productsCache = productsWithUrls;
+            productsCacheTime = now;
+        }
+        res.set('Cache-Control', 'public, max-age=60');
+        res.json(productsWithUrls);
     } catch (error) {
         console.error('Get products error:', error);
-        console.error('Error stack:', error.stack);
         res.status(500).json({ 
             error: 'Failed to get products',
             details: error.message 
@@ -1672,8 +1723,9 @@ app.get('/api/products', async (req, res) => {
 
 app.get('/api/products/recent', async (req, res) => {
     try {
-        const products = await Product.find().sort({ createdAt: -1 }).limit(12);
+        const products = await Product.find().sort({ createdAt: -1 }).limit(12).lean();
         const productsWithUrls = products.map(convertProductImages);
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(productsWithUrls);
     } catch (error) {
         console.error('Get recent products error:', error);
@@ -1683,8 +1735,9 @@ app.get('/api/products/recent', async (req, res) => {
 
 app.get('/api/products/most-viewed', async (req, res) => {
     try {
-        const products = await Product.find().sort({ views: -1 }).limit(10);
+        const products = await Product.find().sort({ views: -1 }).limit(10).lean();
         const productsWithUrls = products.map(convertProductImages);
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(productsWithUrls);
     } catch (error) {
         console.error('Get most viewed error:', error);
@@ -1694,8 +1747,9 @@ app.get('/api/products/most-viewed', async (req, res) => {
 
 app.get('/api/products/most-ordered', async (req, res) => {
     try {
-        const products = await Product.find().sort({ orders: -1 }).limit(10);
+        const products = await Product.find().sort({ orders: -1 }).limit(10).lean();
         const productsWithUrls = products.map(convertProductImages);
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(productsWithUrls);
     } catch (error) {
         console.error('Get most ordered error:', error);
@@ -1705,8 +1759,9 @@ app.get('/api/products/most-ordered', async (req, res) => {
 
 app.get('/api/products/most-loved', async (req, res) => {
     try {
-        const products = await Product.find().sort({ favorites: -1 }).limit(10);
+        const products = await Product.find().sort({ favorites: -1 }).limit(10).lean();
         const productsWithUrls = products.map(convertProductImages);
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(productsWithUrls);
     } catch (error) {
         console.error('Get most loved error:', error);
@@ -2173,7 +2228,15 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-app.listen(PORT_NUM, () => {
+const server = http.createServer(app);
+const io = new SocketServer(server, {
+    cors: { origin: true },
+    pingTimeout: 60000,
+    pingInterval: 25000
+});
+app.set('io', io);
+
+server.listen(PORT_NUM, () => {
     console.log(`API server running on port ${PORT_NUM}`);
 });
 

@@ -355,9 +355,11 @@
 
     <!-- API config (load first) -->
     <script src="/config/api.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         const API_BASE = window.API_BASE;
         const API_BASE_URL = `${API_BASE}/api`;
+        let storeSocket = null;
         
         // Convert image URLs: Google Drive share links to direct, relative /api/images/ to full URL
         function toDirectImageUrl(url) {
@@ -735,10 +737,7 @@
             try {
                 console.log('Loading products from:', `${API_BASE_URL}/products`);
                 const response = await fetch(`${API_BASE_URL}/products`, { 
-                    cache: 'no-store',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 });
                 
                 if (!response.ok) {
@@ -908,6 +907,7 @@
                         window.currentUser = user;
                         window.updateAuthUI(true);
                         window.initUserDataListeners(user.uid);
+                        connectStoreSocket();
                     } else {
                         window.currentUser = null;
                         window.updateAuthUI(false);
@@ -1737,7 +1737,7 @@
                         console.error('Polling error:', error);
                     }
                 }
-            }, 2000); // Poll every 2 seconds
+            }, 5000); // Poll every 5 seconds (real-time via socket for chat)
         };
 
         async function handleAuthSubmit(e) {
@@ -1755,6 +1755,7 @@
                     window.currentUser = response.user;
                     window.updateAuthUI(true);
                     window.initUserDataListeners(response.user.uid);
+                    connectStoreSocket();
                     alertMessage("Welcome back!", "success");
                 } else {
                     const name = document.getElementById('auth-name').value;
@@ -1767,6 +1768,7 @@
                     window.currentUser = response.user;
                     window.updateAuthUI(true);
                     window.initUserDataListeners(response.user.uid);
+                    connectStoreSocket();
                     alertMessage("Account created!", "success");
                 }
                 toggleAuthModal();
@@ -2452,6 +2454,18 @@
         
         // Contact Us Chat
         let currentHelpRequestId = null;
+        
+        function connectStoreSocket() {
+            if (storeSocket) return;
+            try {
+                storeSocket = io(API_BASE, { transports: ['websocket', 'polling'] });
+                storeSocket.on('help_request_message', (payload) => {
+                    if (payload && payload.requestId === currentHelpRequestId && typeof renderContactMessages === 'function') {
+                        renderContactMessages(payload.request);
+                    }
+                });
+            } catch (e) { console.warn('Store socket connect failed:', e); }
+        }
         
         function openContactModal(subject = 'General Inquiry') {
             const modal = document.getElementById('contact-modal');
