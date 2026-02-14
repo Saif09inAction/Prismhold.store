@@ -13,6 +13,7 @@
     "create-admin": "node backend/create-admin.js",
     "create-admin-quick": "node backend/create-admin-quick.js",
     "update-admin": "node backend/update-admin.js",
+    "fix-email-index": "node backend/fix-email-index.js",
     "build": "npm run build-css",
     "build-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --minify && cp ./frontend/dist/tailwind.css ./frontend/public/tailwind.css",
     "watch-css": "npx tailwindcss -i ./frontend/src/input.css -o ./frontend/dist/tailwind.css --watch"

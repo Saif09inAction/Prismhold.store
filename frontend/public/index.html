@@ -7,10 +7,11 @@
     <meta name="description" content="Prismhold - Luxury accessories curated for the modern lifestyle. Shop designer clutches, jewelry, bags & accessories. Hold elegance in your hand. Free shipping.">
     <meta name="keywords" content="prismhold, prism hold, luxury accessories, designer clutches, luxury bags, jewelry, handbags">
     <link rel="canonical" href="https://prismhold.store">
-    <!-- Favicon & Logo for Google search & browser -->
+    <!-- Favicon for Google search & browser - 48x48 recommended by Google -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/logo.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/logo.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/logo.png">
-    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo.png">
     <!-- Open Graph for social sharing & search -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://prismhold.store">
@@ -159,7 +160,11 @@
             position: relative;
         }
         @media (max-width: 768px) {
-            .hero-bg { background-position: center 40%; }
+            .hero-bg { 
+                background-size: contain; 
+                background-position: center center; 
+                background-color: #1a1a1a;
+            }
         }
         .hero-bg::before {
             content: '';
@@ -386,16 +391,26 @@
         .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-shine 1.2s ease-in-out infinite; }
         @keyframes skeleton-shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
-    <!-- JSON-LD Organization schema for Google search -->
+    <!-- JSON-LD for Google search - Organization + WebSite (helps "prismhold" brand discovery) -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Prismhold",
-      "url": "https://prismhold.store",
-      "logo": "https://prismhold.store/logo.png",
-      "description": "Luxury accessories curated for the modern lifestyle. Hold elegance in your hand.",
-      "sameAs": []
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "Prismhold",
+          "alternateName": "Prism Hold",
+          "url": "https://prismhold.store",
+          "logo": "https://prismhold.store/logo.png",
+          "description": "Prismhold - Luxury accessories curated for the modern lifestyle. Hold elegance in your hand."
+        },
+        {
+          "@type": "WebSite",
+          "name": "Prismhold",
+          "url": "https://prismhold.store",
+          "potentialAction": { "@type": "SearchAction", "target": "https://prismhold.store/#shop?q={search_term_string}", "query-input": "required name=search_term_string" }
+        }
+      ]
     }
     </script>
 </head>
@@ -759,8 +774,10 @@
             // Set background only if we have images from API (no image.png fallback to avoid flash)
             if (heroImages && heroImages.length > 0) {
                 heroSection.style.backgroundImage = `url('${heroImages[0]}')`;
-                heroSection.style.backgroundSize = 'cover';
-                heroSection.style.backgroundPosition = window.innerWidth <= 768 ? 'center 40%' : 'center center';
+                const isMobile = window.innerWidth <= 768;
+                heroSection.style.backgroundSize = isMobile ? 'contain' : 'cover';
+                heroSection.style.backgroundPosition = 'center center';
+                heroSection.style.backgroundColor = isMobile ? '#1a1a1a' : '';
             } else {
                 heroSection.style.backgroundImage = 'none';
                 heroSection.style.background = 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)';
@@ -776,7 +793,9 @@
             heroRotationInterval = setInterval(() => {
                 idx = (idx + 1) % heroImages.length;
                 heroSection.style.backgroundImage = `url('${heroImages[idx]}')`;
-                heroSection.style.backgroundPosition = window.innerWidth <= 768 ? 'center 40%' : 'center center';
+                const isMobile = window.innerWidth <= 768;
+                heroSection.style.backgroundSize = isMobile ? 'contain' : 'cover';
+                heroSection.style.backgroundPosition = 'center center';
             }, 5000);
         }
 

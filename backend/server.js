@@ -395,12 +395,18 @@ async function ensureUsersIndexesSparse() {
     }
 }
 function runEnsureIndexes() {
-    if (mongoose.connection.readyState === 1) {
+    const run = () => {
         ensureUsersIndexesSparse();
+        // Retry 2s later in case first run was too early
+        setTimeout(ensureUsersIndexesSparse, 2000);
+    };
+    if (mongoose.connection.readyState === 1) {
+        run();
     } else {
-        mongoose.connection.once('connected', ensureUsersIndexesSparse);
+        mongoose.connection.once('connected', run);
     }
 }
+mongoose.connection.on('reconnected', () => { ensureUsersIndexesSparse(); });
 runEnsureIndexes();
 
 const Profile = mongoose.model('Profile', profileSchema);
