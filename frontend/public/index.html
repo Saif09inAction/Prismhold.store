@@ -1363,66 +1363,76 @@
         </div>
     </div>
 
-    <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeAuthModal(event)">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm transform transition-all scale-100 border border-gray-100" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-light text-primary flex items-center">
-                    <i data-lucide="user" class="w-6 h-6 mr-2 text-accent"></i>
-                    Sign in
-                </h3>
-                <button onclick="toggleAuthModal()" class="p-2 hover:bg-gray-100 rounded-full transition-all duration-200 active:scale-95" aria-label="Close">
-                    <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
-                </button>
-            </div>
-            <!-- Auth method tabs -->
-            <div class="flex gap-2 mb-6 border-b border-gray-200 pb-2">
-                <button type="button" onclick="setAuthTab('email')" id="auth-tab-email" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all" style="background: #1a1a1a; color: white;">Email</button>
-                <button type="button" onclick="setAuthTab('phone')" id="auth-tab-phone" class="flex-1 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100 transition-all">Phone</button>
-                <button type="button" onclick="setAuthTab('google')" id="auth-tab-google" class="flex-1 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100 transition-all">Google</button>
-            </div>
-            <!-- Email OTP -->
-            <div id="auth-panel-email" class="auth-panel">
-                <div id="email-step-1">
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Email</label>
-                    <input type="email" id="auth-email-input" placeholder="Enter your email" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4">
-                    <button type="button" onclick="sendEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center">
-                        <i data-lucide="mail" class="w-4 h-4 mr-2"></i> Send OTP
+    <div id="auth-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4" onclick="closeAuthModal(event)">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-scale-in border border-gray-100" onclick="event.stopPropagation()">
+            <div class="bg-gradient-to-br from-primary via-gray-900 to-primary px-8 py-6 text-white">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs uppercase tracking-[0.3em] text-white/70 mb-1">Welcome to</p>
+                        <h3 class="text-2xl font-bold tracking-tight">PRISM HOLD</h3>
+                        <p class="text-sm text-white/80 mt-1">Sign in to continue</p>
+                    </div>
+                    <button onclick="toggleAuthModal()" class="p-2.5 hover:bg-white/10 rounded-full transition-all duration-200 active:scale-95" aria-label="Close">
+                        <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
-                <div id="email-step-2" class="hidden">
-                    <p class="text-sm text-gray-500 mb-2">Check your inbox for the 6-digit code</p>
-                    <input type="text" id="auth-email-otp" placeholder="Enter OTP" maxlength="6" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-center text-lg tracking-widest">
-                    <button type="button" onclick="verifyEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center">
-                        <i data-lucide="check" class="w-4 h-4 mr-2"></i> Verify
-                    </button>
-                    <button type="button" onclick="resetEmailOtpStep()" class="w-full mt-2 text-sm text-gray-500 hover:text-primary">Change email</button>
-                </div>
             </div>
-            <!-- Phone OTP -->
-            <div id="auth-panel-phone" class="auth-panel hidden">
-                <div id="recaptcha-container"></div>
-                <div id="phone-step-1">
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Phone (with country code)</label>
-                    <input type="tel" id="auth-phone-input" placeholder="+91 9876543210" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4">
-                    <button type="button" onclick="sendPhoneOtp()" id="send-phone-otp-btn" class="w-full luxury-button font-bold py-3.5 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center">
-                        <i data-lucide="smartphone" class="w-4 h-4 mr-2"></i> Send OTP
+            <div class="p-8">
+                <div class="flex gap-1 p-1 bg-gray-100 rounded-xl mb-6">
+                    <button type="button" onclick="setAuthTab('email')" id="auth-tab-email" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2">
+                        <i data-lucide="mail" class="w-4 h-4"></i> Email
+                    </button>
+                    <button type="button" onclick="setAuthTab('phone')" id="auth-tab-phone" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-600 transition-all duration-300 flex items-center justify-center gap-2">
+                        <i data-lucide="smartphone" class="w-4 h-4"></i> Phone
+                    </button>
+                    <button type="button" onclick="setAuthTab('google')" id="auth-tab-google" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-600 transition-all duration-300 flex items-center justify-center gap-2">
+                        <i data-lucide="chrome" class="w-4 h-4"></i> Google
                     </button>
                 </div>
-                <div id="phone-step-2" class="hidden">
-                    <p class="text-sm text-gray-500 mb-2">Enter the 6-digit code sent to your phone</p>
-                    <input type="text" id="auth-phone-otp" placeholder="Enter OTP" maxlength="6" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-center text-lg tracking-widest">
-                    <button type="button" onclick="verifyPhoneOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center">
-                        <i data-lucide="check" class="w-4 h-4 mr-2"></i> Verify
-                    </button>
-                    <button type="button" onclick="resetPhoneOtpStep()" class="w-full mt-2 text-sm text-gray-500 hover:text-primary">Change number</button>
+                <!-- Email OTP -->
+                <div id="auth-panel-email" class="auth-panel">
+                    <div id="email-step-1">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Email address</label>
+                        <input type="email" id="auth-email-input" placeholder="you@example.com" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-base">
+                        <button type="button" onclick="sendEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                            <i data-lucide="send" class="w-4 h-4"></i> Send OTP
+                        </button>
+                    </div>
+                    <div id="email-step-2" class="hidden">
+                        <p class="text-sm text-gray-500 mb-3">We sent a 6-digit code to your email</p>
+                        <input type="text" id="auth-email-otp" placeholder="000000" maxlength="6" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-center text-xl tracking-[0.5em] font-semibold">
+                        <button type="button" onclick="verifyEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mb-2">
+                            <i data-lucide="check" class="w-4 h-4"></i> Verify & Continue
+                        </button>
+                        <button type="button" onclick="resetEmailOtpStep()" class="w-full py-2 text-sm text-gray-500 hover:text-accent transition-colors">Use different email</button>
+                    </div>
                 </div>
-            </div>
-            <!-- Google -->
-            <div id="auth-panel-google" class="auth-panel hidden">
-                <button type="button" onclick="handleGoogleLogin()" class="w-full border-2 border-gray-200 text-gray-600 font-bold py-3.5 rounded-xl hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center transition-all duration-300 active:scale-95">
-                    <i data-lucide="chrome" class="w-5 h-5 mr-2"></i>
-                    Continue with Google
-                </button>
+                <!-- Phone OTP -->
+                <div id="auth-panel-phone" class="auth-panel hidden">
+                    <div id="recaptcha-container"></div>
+                    <div id="phone-step-1">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Phone number</label>
+                        <input type="tel" id="auth-phone-input" placeholder="+91 9876543210" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-base">
+                        <button type="button" onclick="sendPhoneOtp()" id="send-phone-otp-btn" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                            <i data-lucide="message-circle" class="w-4 h-4"></i> Send OTP
+                        </button>
+                    </div>
+                    <div id="phone-step-2" class="hidden">
+                        <p class="text-sm text-gray-500 mb-3">Enter the 6-digit code we sent</p>
+                        <input type="text" id="auth-phone-otp" placeholder="000000" maxlength="6" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-center text-xl tracking-[0.5em] font-semibold">
+                        <button type="button" onclick="verifyPhoneOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mb-2">
+                            <i data-lucide="check" class="w-4 h-4"></i> Verify & Continue
+                        </button>
+                        <button type="button" onclick="resetPhoneOtpStep()" class="w-full py-2 text-sm text-gray-500 hover:text-accent transition-colors">Use different number</button>
+                    </div>
+                </div>
+                <!-- Google -->
+                <div id="auth-panel-google" class="auth-panel hidden">
+                    <button type="button" onclick="handleGoogleLogin()" class="w-full py-3.5 px-4 border-2 border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.98]">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        Continue with Google
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1679,9 +1689,7 @@
             authTab = tab;
             document.querySelectorAll('[id^="auth-tab-"]').forEach(btn => {
                 const isActive = btn.id === 'auth-tab-' + tab;
-                btn.style.background = isActive ? '#1a1a1a' : '';
-                btn.style.color = isActive ? 'white' : '';
-                btn.classList.toggle('bg-gray-100', !isActive);
+                btn.className = 'flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ' + (isActive ? 'bg-white text-primary shadow-sm' : 'text-gray-600');
             });
             document.querySelectorAll('.auth-panel').forEach(p => p.classList.add('hidden'));
             const panel = document.getElementById('auth-panel-' + tab);
@@ -1720,6 +1728,7 @@
                 connectStoreSocket();
                 alertMessage('Welcome!', 'success');
                 toggleAuthModal();
+                if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
             } catch (e) { alertMessage(e.message || 'Invalid OTP', 'error'); }
         }
         function resetPhoneOtpStep() {
@@ -1767,6 +1776,7 @@
                 connectStoreSocket();
                 alertMessage('Welcome!', 'success');
                 toggleAuthModal();
+                if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
             } catch (e) { alertMessage(e.message || 'Invalid OTP', 'error'); }
         }
 
@@ -1795,18 +1805,39 @@
             lucide.createIcons();
         };
 
+        function mergeCartItems(guestItems, serverItems) {
+            const byId = new Map();
+            (serverItems || []).forEach(i => { byId.set(Number(i.id), { ...i }); });
+            (guestItems || []).forEach(g => {
+                const id = Number(g.id);
+                const existing = byId.get(id);
+                if (existing) {
+                    existing.quantity = (existing.quantity || 0) + (g.quantity || 0);
+                } else {
+                    byId.set(id, { ...g });
+                }
+            });
+            return Array.from(byId.values());
+        }
         window.initUserDataListeners = async function(uid) {
-            if (mockDB.carts[uid]) { 
+            const guestCart = [...cartItems];
+            if (mockDB.carts[uid] && guestCart.length === 0) { 
                 cartItems = mockDB.carts[uid]; 
             } else {
                 try {
                     const cartData = await apiRequest('/cart');
-                    cartItems = cartData.items || [];
-                        renderCart();
-                        if (!document.getElementById('checkout-modal').classList.contains('hidden')) renderCheckoutSummary();
+                    const serverItems = cartData.items || [];
+                    const merged = mergeCartItems(guestCart, serverItems);
+                    cartItems = merged;
+                    await apiRequest('/cart', { method: 'PUT', body: JSON.stringify({ items: merged }) });
                 } catch (error) {
                     console.error('Failed to load cart:', error);
+                    if (guestCart.length > 0) {
+                        try { await apiRequest('/cart', { method: 'PUT', body: JSON.stringify({ items: guestCart }) }); cartItems = guestCart; } catch (e) {}
                     }
+                }
+                renderCart();
+                if (!document.getElementById('checkout-modal').classList.contains('hidden')) renderCheckoutSummary();
             }
             renderCart();
 
@@ -1862,23 +1893,34 @@
         };
 
         async function handleGoogleLogin() {
-            if (!firebaseAuth) { alertMessage('Google login is not configured. Add Firebase credentials.', 'error'); return; }
+            if (!firebaseAuth) { alertMessage('Google login is not configured.', 'error'); return; }
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
-                const result = await firebaseAuth.signInWithPopup(provider);
-                const idToken = await result.user.getIdToken();
-                const res = await apiRequest('/auth/firebase', { method: 'POST', body: JSON.stringify({ idToken }) });
-                setAuthToken(res.token);
-                setCurrentUser(res.user);
-                window.currentUser = res.user;
-                window.updateAuthUI(true);
-                window.initUserDataListeners(res.user.uid);
-                connectStoreSocket();
-                alertMessage('Welcome!', 'success');
-                toggleAuthModal();
+                await firebaseAuth.signInWithRedirect(provider);
             } catch (e) {
                 console.error('Google login error:', e);
                 alertMessage(e.message || 'Google sign-in failed', 'error');
+            }
+        }
+        async function handleGoogleRedirectResult() {
+            if (!firebaseAuth) return;
+            try {
+                const result = await firebaseAuth.getRedirectResult();
+                if (result && result.user) {
+                    const idToken = await result.user.getIdToken();
+                    const res = await apiRequest('/auth/firebase', { method: 'POST', body: JSON.stringify({ idToken }) });
+                    setAuthToken(res.token);
+                    setCurrentUser(res.user);
+                    window.currentUser = res.user;
+                    window.updateAuthUI(true);
+                    window.initUserDataListeners(res.user.uid);
+                    connectStoreSocket();
+                    alertMessage('Welcome!', 'success');
+                    if (document.getElementById('auth-modal') && !document.getElementById('auth-modal').classList.contains('hidden')) toggleAuthModal();
+                    if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
+                }
+            } catch (e) {
+                if (e.code !== 'auth/operation-not-allowed' && e.code !== 'auth/popup-closed-by-user') console.error('Google redirect result error:', e);
             }
         }
 
@@ -2715,7 +2757,7 @@
             }
         }
         async function initiateCheckout() { 
-            if(!window.currentUser) { alertMessage("Please Login", "info"); toggleAuthModal('login'); return; } 
+            if(!window.currentUser) { window.pendingCheckout = true; alertMessage("Sign in to proceed with your order", "info"); toggleAuthModal('login'); return; } 
             const selectedItems = cartItems.filter(i => selectedCartItems.has(i.id));
             if(!selectedItems.length) return alertMessage("Please select items to checkout", "error"); 
             await loadProducts(); // Refresh stock before checkout
@@ -3243,7 +3285,7 @@
             filterProducts(); 
             renderCart(); 
             lucide.createIcons();
-            
+            handleGoogleRedirectResult();
             // Re-initialize icons after footer loads
             setTimeout(() => lucide.createIcons(), 100);
         });
