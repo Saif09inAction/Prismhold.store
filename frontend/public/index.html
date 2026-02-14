@@ -2051,8 +2051,31 @@
             if (!firebaseAuth) { alertMessage('Google login is not configured.', 'error'); return; }
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
-                await firebaseAuth.signInWithRedirect(provider);
+                const result = await firebaseAuth.signInWithPopup(provider);
+                if (result && result.user) {
+                    const idToken = await result.user.getIdToken(true);
+                    const res = await apiRequest('/auth/firebase', { method: 'POST', body: JSON.stringify({ idToken }) });
+                    const needsName = !res.user.displayName || !String(res.user.displayName).trim();
+                    if (needsName) {
+                        setAuthToken(res.token);
+                        pendingUserAuth = { token: res.token, user: res.user };
+                        document.getElementById('auth-newuser-name').value = '';
+                        setAuthTab('newuser-name');
+                        return;
+                    }
+                    setAuthToken(res.token);
+                    setCurrentUser(res.user);
+                    window.currentUser = res.user;
+                    window.updateAuthUI(true);
+                    window.initUserDataListeners(res.user.uid);
+                    connectStoreSocket();
+                    const name = res.user.displayName || '';
+                    alertMessage(name ? `Welcome, ${name}!` : 'Welcome!', 'success');
+                    toggleAuthModal();
+                    if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
+                }
             } catch (e) {
+                if (e.code === 'auth/popup-closed-by-user') return;
                 console.error('Google login error:', e);
                 alertMessage(e.message || 'Google sign-in failed', 'error');
             }
