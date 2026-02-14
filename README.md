@@ -107,9 +107,12 @@ Then open `http://localhost:8000` in your browser.
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/signup` - Create new user account
-- `POST /api/auth/login` - Login with email/password
-- `POST /api/auth/google` - Google OAuth login (requires setup)
+- `POST /api/auth/signup` - Create new user account (legacy)
+- `POST /api/auth/login` - Login with email/password (legacy)
+- `POST /api/auth/google` - Google OAuth login (legacy)
+- `POST /api/auth/firebase` - Sign in with Firebase ID token (Phone OTP, Google)
+- `POST /api/auth/email-otp/send` - Send OTP to email
+- `POST /api/auth/email-otp/verify` - Verify email OTP and sign in
 
 ### Profile
 - `GET /api/profile` - Get user profile
@@ -204,7 +207,9 @@ RAZORPAY_KEY_SECRET=your_razorpay_key_secret
 - ✅ Address management
 - ✅ Order placement and tracking
 - ✅ Profile management
-- ⚠️ Google OAuth (needs additional setup)
+- ✅ Email OTP sign-in
+- ✅ Phone OTP sign-in (Firebase)
+- ✅ Google sign-in (Firebase)
 
 ## Troubleshooting
 
@@ -220,6 +225,15 @@ If you see connection errors:
 If you encounter CORS errors when accessing the API:
 - The server is configured to allow all origins in development
 - For production, update CORS settings in `server.js`
+
+### Firebase Auth Setup (Email OTP, Phone OTP, Google)
+
+1. **Firebase Console**: Create a project at [Firebase Console](https://console.firebase.google.com)
+2. **Enable Auth methods**: Authentication → Sign-in method → Enable Phone, Google (and optionally Email/Password)
+3. **Frontend**: Edit `frontend/public/config/firebase.js` with your Firebase web config (Project Settings → Your apps)
+4. **Backend**: Add to `.env`:
+   - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (from Service Accounts)
+   - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` for email OTP (e.g. Gmail app password)
 
 ### Authentication Issues
 

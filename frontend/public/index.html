@@ -367,6 +367,9 @@
 
     <!-- API config (load first) -->
     <script src="/config/api.js"></script>
+    <script src="/config/firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         const API_BASE = window.API_BASE;
@@ -1362,51 +1365,65 @@
 
     <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeAuthModal(event)">
         <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm transform transition-all scale-100 border border-gray-100" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-8">
-                <h3 id="auth-title" class="text-2xl font-light text-primary flex items-center">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-light text-primary flex items-center">
                     <i data-lucide="user" class="w-6 h-6 mr-2 text-accent"></i>
-                    Welcome
+                    Sign in
                 </h3>
                 <button onclick="toggleAuthModal()" class="p-2 hover:bg-gray-100 rounded-full transition-all duration-200 active:scale-95" aria-label="Close">
                     <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
                 </button>
             </div>
-            <form id="auth-form" onsubmit="handleAuthSubmit(event)">
-                <div id="auth-name-container" class="mb-4 hidden">
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Name</label>
-                    <input type="text" id="auth-name" placeholder="Enter your name" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none">
-                </div>
-                <div class="mb-4">
+            <!-- Auth method tabs -->
+            <div class="flex gap-2 mb-6 border-b border-gray-200 pb-2">
+                <button type="button" onclick="setAuthTab('email')" id="auth-tab-email" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all" style="background: #1a1a1a; color: white;">Email</button>
+                <button type="button" onclick="setAuthTab('phone')" id="auth-tab-phone" class="flex-1 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100 transition-all">Phone</button>
+                <button type="button" onclick="setAuthTab('google')" id="auth-tab-google" class="flex-1 py-2 text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100 transition-all">Google</button>
+            </div>
+            <!-- Email OTP -->
+            <div id="auth-panel-email" class="auth-panel">
+                <div id="email-step-1">
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Email</label>
-                    <input type="email" id="auth-email" placeholder="Enter your email" required class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none">
+                    <input type="email" id="auth-email-input" placeholder="Enter your email" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4">
+                    <button type="button" onclick="sendEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center">
+                        <i data-lucide="mail" class="w-4 h-4 mr-2"></i> Send OTP
+                    </button>
                 </div>
-                <div class="mb-6">
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Password</label>
-                    <input type="password" id="auth-password" placeholder="Enter your password" required class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none">
+                <div id="email-step-2" class="hidden">
+                    <p class="text-sm text-gray-500 mb-2">Check your inbox for the 6-digit code</p>
+                    <input type="text" id="auth-email-otp" placeholder="Enter OTP" maxlength="6" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-center text-lg tracking-widest">
+                    <button type="button" onclick="verifyEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center">
+                        <i data-lucide="check" class="w-4 h-4 mr-2"></i> Verify
+                    </button>
+                    <button type="button" onclick="resetEmailOtpStep()" class="w-full mt-2 text-sm text-gray-500 hover:text-primary">Change email</button>
                 </div>
-                <button type="submit" class="w-full luxury-button font-bold py-3.5 rounded-xl mb-4 shadow-lg transition-all duration-300">
-                    <span class="flex items-center justify-center">
-                        <i data-lucide="arrow-right" class="w-4 h-4 mr-2"></i>
-                        CONTINUE
-                    </span>
-                </button>
-                <div class="relative mb-6">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-gray-200"></div>
-                    </div>
-                    <div class="relative flex justify-center text-xs uppercase text-gray-400 tracking-widest">
-                        <span class="px-3 bg-white">Or</span>
-                    </div>
+            </div>
+            <!-- Phone OTP -->
+            <div id="auth-panel-phone" class="auth-panel hidden">
+                <div id="recaptcha-container"></div>
+                <div id="phone-step-1">
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Phone (with country code)</label>
+                    <input type="tel" id="auth-phone-input" placeholder="+91 9876543210" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4">
+                    <button type="button" onclick="sendPhoneOtp()" id="send-phone-otp-btn" class="w-full luxury-button font-bold py-3.5 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center">
+                        <i data-lucide="smartphone" class="w-4 h-4 mr-2"></i> Send OTP
+                    </button>
                 </div>
+                <div id="phone-step-2" class="hidden">
+                    <p class="text-sm text-gray-500 mb-2">Enter the 6-digit code sent to your phone</p>
+                    <input type="text" id="auth-phone-otp" placeholder="Enter OTP" maxlength="6" class="w-full p-3.5 border-2 border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-center text-lg tracking-widest">
+                    <button type="button" onclick="verifyPhoneOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center">
+                        <i data-lucide="check" class="w-4 h-4 mr-2"></i> Verify
+                    </button>
+                    <button type="button" onclick="resetPhoneOtpStep()" class="w-full mt-2 text-sm text-gray-500 hover:text-primary">Change number</button>
+                </div>
+            </div>
+            <!-- Google -->
+            <div id="auth-panel-google" class="auth-panel hidden">
                 <button type="button" onclick="handleGoogleLogin()" class="w-full border-2 border-gray-200 text-gray-600 font-bold py-3.5 rounded-xl hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center transition-all duration-300 active:scale-95">
                     <i data-lucide="chrome" class="w-5 h-5 mr-2"></i>
                     Continue with Google
                 </button>
-            </form>
-            <p class="text-center mt-6 text-sm text-gray-500">
-                <span id="auth-switch-text">New here?</span> 
-                <a href="#" onclick="switchAuthMode(event)" id="auth-switch-btn" class="text-primary font-bold hover:text-accent hover:underline cursor-pointer transition-colors ml-1">Create Account</a>
-            </p>
+            </div>
         </div>
     </div>
 
@@ -1562,7 +1579,18 @@
         let userAddresses = [];
         let userOrders = [];
         let authMode = 'login';
+        let authTab = 'email';
+        let firebaseAuth = null;
+        let phoneConfirmationResult = null; // For Firebase phone OTP
+        let recaptchaVerifier = null;
         let currentCategory = 'all';
+        // Firebase init
+        if (typeof firebase !== 'undefined' && window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey && window.FIREBASE_CONFIG.apiKey !== 'YOUR_FIREBASE_API_KEY') {
+            try {
+                firebase.initializeApp(window.FIREBASE_CONFIG);
+                firebaseAuth = firebase.auth();
+            } catch (e) { console.warn('Firebase init:', e.message); }
+        }
         let products = []; // Initialize products array to prevent undefined errors
         let storeSettings = { freeDeliveryQuantity: 0, deliveryChargesAmount: 0 };
         const businessPhone = "917257857609"; 
@@ -1638,26 +1666,108 @@
 
         function toggleAuthModal(mode) {
             const modal = document.getElementById('auth-modal');
-            const title = document.getElementById('auth-title');
-            const nameContainer = document.getElementById('auth-name-container');
-            const switchText = document.getElementById('auth-switch-text');
-            const switchBtn = document.getElementById('auth-switch-btn');
-            
-            if (mode) {
-                authMode = mode;
-                title.textContent = authMode === 'login' ? 'Welcome Back' : 'Create Account';
-                nameContainer.classList.toggle('hidden', authMode === 'login');
-                switchText.textContent = authMode === 'login' ? "New here?" : "Already have an account?";
-                switchBtn.textContent = authMode === 'login' ? "Create Account" : "Login";
-                if(modal.classList.contains('hidden')) modal.classList.remove('hidden');
-            } else {
+            if (mode && modal.classList.contains('hidden')) {
+                setAuthTab(authTab);
+                resetEmailOtpStep();
+                resetPhoneOtpStep();
+                modal.classList.remove('hidden');
+            } else if (!mode) {
                 modal.classList.toggle('hidden');
             }
         }
-        function switchAuthMode(e) {
-            e.preventDefault();
-            const newMode = authMode === 'login' ? 'signup' : 'login';
-            toggleAuthModal(newMode);
+        function setAuthTab(tab) {
+            authTab = tab;
+            document.querySelectorAll('[id^="auth-tab-"]').forEach(btn => {
+                const isActive = btn.id === 'auth-tab-' + tab;
+                btn.style.background = isActive ? '#1a1a1a' : '';
+                btn.style.color = isActive ? 'white' : '';
+                btn.classList.toggle('bg-gray-100', !isActive);
+            });
+            document.querySelectorAll('.auth-panel').forEach(p => p.classList.add('hidden'));
+            const panel = document.getElementById('auth-panel-' + tab);
+            if (panel) panel.classList.remove('hidden');
+            lucide.createIcons();
+        }
+        async function sendEmailOtp() {
+            const email = document.getElementById('auth-email-input')?.value?.trim();
+            if (!email) { alertMessage('Enter your email', 'error'); return; }
+            try {
+                await apiRequest('/auth/email-otp/send', { method: 'POST', body: JSON.stringify({ email }) });
+                alertMessage('OTP sent! Check your inbox.', 'success');
+                document.getElementById('email-step-1').classList.add('hidden');
+                document.getElementById('email-step-2').classList.remove('hidden');
+                document.getElementById('auth-email-otp').value = '';
+                lucide.createIcons();
+            } catch (e) { alertMessage(e.message || 'Failed to send OTP', 'error'); }
+        }
+        function resetEmailOtpStep() {
+            document.getElementById('email-step-1').classList.remove('hidden');
+            document.getElementById('email-step-2').classList.add('hidden');
+            document.getElementById('auth-email-input').value = '';
+            document.getElementById('auth-email-otp').value = '';
+        }
+        async function verifyEmailOtp() {
+            const email = document.getElementById('auth-email-input')?.value?.trim();
+            const otp = document.getElementById('auth-email-otp')?.value?.trim();
+            if (!email || !otp) { alertMessage('Enter the OTP from your email', 'error'); return; }
+            try {
+                const res = await apiRequest('/auth/email-otp/verify', { method: 'POST', body: JSON.stringify({ email, otp }) });
+                setAuthToken(res.token);
+                setCurrentUser(res.user);
+                window.currentUser = res.user;
+                window.updateAuthUI(true);
+                window.initUserDataListeners(res.user.uid);
+                connectStoreSocket();
+                alertMessage('Welcome!', 'success');
+                toggleAuthModal();
+            } catch (e) { alertMessage(e.message || 'Invalid OTP', 'error'); }
+        }
+        function resetPhoneOtpStep() {
+            document.getElementById('phone-step-1').classList.remove('hidden');
+            document.getElementById('phone-step-2').classList.add('hidden');
+            document.getElementById('auth-phone-input').value = '';
+            document.getElementById('auth-phone-otp').value = '';
+            phoneConfirmationResult = null;
+        }
+        async function sendPhoneOtp() {
+            if (!firebaseAuth) { alertMessage('Phone login is not configured. Add Firebase credentials.', 'error'); return; }
+            const phone = document.getElementById('auth-phone-input')?.value?.trim()?.replace(/\s/g, '');
+            if (!phone) { alertMessage('Enter your phone number with country code (e.g. +91 9876543210)', 'error'); return; }
+            const btn = document.getElementById('send-phone-otp-btn');
+            btn.disabled = true;
+            try {
+                if (!recaptchaVerifier) {
+                    recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible', callback: () => {} });
+                }
+                phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, recaptchaVerifier);
+                document.getElementById('phone-step-1').classList.add('hidden');
+                document.getElementById('phone-step-2').classList.remove('hidden');
+                document.getElementById('auth-phone-otp').value = '';
+                lucide.createIcons();
+            } catch (e) {
+                alertMessage(e.message || 'Failed to send OTP', 'error');
+                if (recaptchaVerifier) recaptchaVerifier.clear();
+                recaptchaVerifier = null;
+            }
+            btn.disabled = false;
+        }
+        async function verifyPhoneOtp() {
+            if (!phoneConfirmationResult) { alertMessage('Request OTP first', 'error'); return; }
+            const otp = document.getElementById('auth-phone-otp')?.value?.trim();
+            if (!otp) { alertMessage('Enter the OTP from your phone', 'error'); return; }
+            try {
+                const cred = await phoneConfirmationResult.confirm(otp);
+                const idToken = await cred.user.getIdToken();
+                const res = await apiRequest('/auth/firebase', { method: 'POST', body: JSON.stringify({ idToken }) });
+                setAuthToken(res.token);
+                setCurrentUser(res.user);
+                window.currentUser = res.user;
+                window.updateAuthUI(true);
+                window.initUserDataListeners(res.user.uid);
+                connectStoreSocket();
+                alertMessage('Welcome!', 'success');
+                toggleAuthModal();
+            } catch (e) { alertMessage(e.message || 'Invalid OTP', 'error'); }
         }
 
         // --- API AUTHENTICATION ---
@@ -1670,8 +1780,8 @@
                 btnContainer.classList.remove('hidden');
                 try {
                     const profile = await apiRequest('/profile');
-                    const email = profile.email || window.currentUser.email;
-                    const name = profile.displayName || window.currentUser.displayName;
+                    const email = profile.email || window.currentUser.email || window.currentUser.phone || '';
+                    const name = profile.displayName || window.currentUser.displayName || '';
                     document.getElementById('profile-email-input').value = email || "";
                     document.getElementById('profile-name-input').value = name || "";
                 } catch (error) {
@@ -1751,55 +1861,24 @@
             }, 5000); // Poll every 5 seconds (real-time via socket for chat)
         };
 
-        async function handleAuthSubmit(e) {
-            e.preventDefault();
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            try {
-                if (authMode === 'login') {
-                    const response = await apiRequest('/auth/login', {
-                        method: 'POST',
-                        body: JSON.stringify({ email, password })
-                    });
-                    setAuthToken(response.token);
-                    setCurrentUser(response.user);
-                    window.currentUser = response.user;
-                    window.updateAuthUI(true);
-                    window.initUserDataListeners(response.user.uid);
-                    connectStoreSocket();
-                    alertMessage("Welcome back!", "success");
-                } else {
-                    const name = document.getElementById('auth-name').value;
-                    const response = await apiRequest('/auth/signup', {
-                        method: 'POST',
-                        body: JSON.stringify({ email, password, displayName: name })
-                    });
-                    setAuthToken(response.token);
-                    setCurrentUser(response.user);
-                    window.currentUser = response.user;
-                    window.updateAuthUI(true);
-                    window.initUserDataListeners(response.user.uid);
-                    connectStoreSocket();
-                    alertMessage("Account created!", "success");
-                }
-                toggleAuthModal();
-            } catch (error) { 
-                alertMessage(error.message || "Authentication failed", "error"); 
-            }
-        }
-
         async function handleGoogleLogin() {
+            if (!firebaseAuth) { alertMessage('Google login is not configured. Add Firebase credentials.', 'error'); return; }
             try {
-                alertMessage("Google login is being set up. Please use email/password for now.", "info");
-                // TODO: Implement Google OAuth with proper client ID
-                // For now, users can use email/password authentication
-                // To enable Google login, you need to:
-                // 1. Set up Google OAuth credentials
-                // 2. Add GOOGLE_CLIENT_ID to your server environment
-                // 3. Implement Google Sign-In button in the UI
-            } catch (error) { 
-                console.error('Google login error:', error);
-                alertMessage("Google Login Failed. Please use email/password.", "error"); 
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await firebaseAuth.signInWithPopup(provider);
+                const idToken = await result.user.getIdToken();
+                const res = await apiRequest('/auth/firebase', { method: 'POST', body: JSON.stringify({ idToken }) });
+                setAuthToken(res.token);
+                setCurrentUser(res.user);
+                window.currentUser = res.user;
+                window.updateAuthUI(true);
+                window.initUserDataListeners(res.user.uid);
+                connectStoreSocket();
+                alertMessage('Welcome!', 'success');
+                toggleAuthModal();
+            } catch (e) {
+                console.error('Google login error:', e);
+                alertMessage(e.message || 'Google sign-in failed', 'error');
             }
         }
 

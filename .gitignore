@@ -9,6 +9,9 @@ yarn-error.log*
 .env.local
 .env.production
 
+# Firebase service account (never commit)
+*serviceAccount*.json
+
 # Uploads (if you want to ignore uploaded files)
 # uploads/
 

@@ -7,8 +7,11 @@ const compression = require('compression');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
+const admin = require('firebase-admin');
+const nodemailer = require('nodemailer');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const { randomUUID } = require('crypto');
 const Razorpay = require('razorpay');
 const sharp = require('sharp');
@@ -103,13 +106,14 @@ app.get('/', (req, res) => {
 // MongoDB Connection with retry logic
 let mongooseConnected = false;
 
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 async function connectMongoDB() {
-    if (!process.env.MONGO_URI) {
-        console.error('MONGO_URI must be set');
+    if (!MONGO_URI) {
+        console.error('MONGO_URI or MONGODB_URI must be set');
         return;
     }
     try {
-        await mongoose.connect(process.env.MONGO_URI, {
+        await mongoose.connect(MONGO_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
@@ -141,10 +145,67 @@ mongoose.connection.on('reconnected', () => {
     console.log('✅ MongoDB reconnected successfully');
 });
 
+// Firebase Admin (optional - for Phone OTP & Google via Firebase)
+// Option 1: Service account JSON file - set FIREBASE_SERVICE_ACCOUNT_PATH in .env
+// Option 2: Env vars - FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
+let firebaseAdminInitialized = false;
+const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+const serviceAccountFullPath = serviceAccountPath && (path.isAbsolute(serviceAccountPath) ? serviceAccountPath : path.resolve(process.cwd(), serviceAccountPath));
+const serviceAccountJson = serviceAccountFullPath && fs.existsSync(serviceAccountFullPath)
+    ? JSON.parse(fs.readFileSync(serviceAccountFullPath, 'utf8'))
+    : null;
+
+if (serviceAccountJson) {
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccountJson),
+            databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://prismhold-87580-default-rtdb.asia-southeast1.firebasedatabase.app'
+        });
+        firebaseAdminInitialized = true;
+        console.log('✅ Firebase Admin initialized (service account file)');
+    } catch (err) {
+        console.warn('⚠️ Firebase Admin init failed:', err.message);
+    }
+} else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    try {
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+            })
+        });
+        firebaseAdminInitialized = true;
+        console.log('✅ Firebase Admin initialized');
+    } catch (err) {
+        console.warn('⚠️ Firebase Admin init failed:', err.message);
+    }
+} else {
+    console.warn('⚠️ Firebase credentials not set. Phone OTP & Google via Firebase will not work.');
+}
+
+// In-memory OTP store for email OTP (use Redis in production for multi-instance)
+const emailOtpStore = new Map(); // email -> { otp, expiresAt }
+function generateEmailOtp() {
+    return String(Math.floor(100000 + Math.random() * 900000));
+}
+function setEmailOtp(email, otp) {
+    emailOtpStore.set(email.toLowerCase(), { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+}
+function verifyEmailOtp(email, otp) {
+    const entry = emailOtpStore.get(email.toLowerCase());
+    if (!entry || entry.expiresAt < Date.now()) return false;
+    if (entry.otp !== otp) return false;
+    emailOtpStore.delete(email.toLowerCase());
+    return true;
+}
+
 // MongoDB Schemas
 const userSchema = new mongoose.Schema({
-    email: { type: String, required: true, unique: true },
-    password: String, // null for Google OAuth users
+    email: { type: String, sparse: true, unique: true },
+    phone: { type: String, sparse: true, unique: true },
+    firebaseUid: { type: String, sparse: true, unique: true },
+    password: String,
     displayName: String,
     isAdmin: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
@@ -579,6 +640,152 @@ app.post('/api/auth/google', async (req, res) => {
     } catch (error) {
         console.error('Google auth error:', error);
         res.status(500).json({ error: 'Google authentication failed' });
+    }
+});
+
+// Firebase Auth (Phone OTP, Google Sign-In via Firebase)
+app.post('/api/auth/firebase', async (req, res) => {
+    try {
+        if (!firebaseAdminInitialized) {
+            return res.status(503).json({ error: 'Firebase auth is not configured' });
+        }
+        const { idToken } = req.body;
+        if (!idToken) {
+            return res.status(400).json({ error: 'ID token is required' });
+        }
+        const decoded = await admin.auth().verifyIdToken(idToken);
+        const { uid: firebaseUid, email, phone_number: phone, name: displayName } = decoded;
+
+        let user = await User.findOne({
+            $or: [
+                { firebaseUid },
+                ...(email ? [{ email }] : []),
+                ...(phone ? [{ phone }] : [])
+            ]
+        });
+
+        if (!user) {
+            user = new User({
+                firebaseUid,
+                email: email || null,
+                phone: phone || null,
+                displayName: displayName || null,
+                password: null
+            });
+            await user.save();
+            const profile = new Profile({
+                userId: user._id,
+                email: email || null,
+                displayName: displayName || null
+            });
+            await profile.save();
+            const cart = new Cart({ userId: user._id, items: [] });
+            await cart.save();
+        } else if (!user.firebaseUid) {
+            user.firebaseUid = firebaseUid;
+            if (phone && !user.phone) user.phone = phone;
+            await user.save();
+        }
+
+        const token = jwt.sign(
+            { userId: user._id, email: user.email || user.phone },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        res.json({
+            user: {
+                uid: user._id.toString(),
+                email: user.email || null,
+                phone: user.phone || null,
+                displayName: user.displayName || null
+            },
+            token
+        });
+    } catch (error) {
+        console.error('Firebase auth error:', error);
+        res.status(401).json({ error: 'Invalid or expired token' });
+    }
+});
+
+// Email OTP - Send
+app.post('/api/auth/email-otp/send', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({ error: 'Valid email is required' });
+        }
+        const otp = generateEmailOtp();
+        setEmailOtp(email, otp);
+
+        const transport = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: Number(process.env.SMTP_PORT) || 587,
+            secure: false,
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS
+            }
+        });
+        if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+            return res.status(503).json({ error: 'Email OTP is not configured (SMTP missing)' });
+        }
+        await transport.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: email,
+            subject: 'Your Prism Hold login code',
+            text: `Your one-time password is: ${otp}\n\nIt expires in 5 minutes.\n\n- Prism Hold`,
+            html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p><p>- Prism Hold</p>`
+        });
+        res.json({ success: true, message: 'OTP sent to your email' });
+    } catch (error) {
+        console.error('Email OTP send error:', error);
+        res.status(500).json({ error: 'Failed to send OTP' });
+    }
+});
+
+// Email OTP - Verify
+app.post('/api/auth/email-otp/verify', async (req, res) => {
+    try {
+        if (!checkMongoConnection()) {
+            return res.status(503).json({ error: 'Database not available' });
+        }
+        const { email, otp } = req.body;
+        if (!email || !otp) {
+            return res.status(400).json({ error: 'Email and OTP are required' });
+        }
+        if (!verifyEmailOtp(email, otp)) {
+            return res.status(401).json({ error: 'Invalid or expired OTP' });
+        }
+        const emailNorm = email.toLowerCase().trim();
+        let user = await User.findOne({ email: emailNorm });
+        if (!user) {
+            user = new User({
+                email: emailNorm,
+                displayName: null,
+                password: null
+            });
+            await user.save();
+            const profile = new Profile({ userId: user._id, email: emailNorm, displayName: null });
+            await profile.save();
+            const cart = new Cart({ userId: user._id, items: [] });
+            await cart.save();
+        }
+        const token = jwt.sign(
+            { userId: user._id, email: user.email },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        res.json({
+            user: {
+                uid: user._id.toString(),
+                email: user.email,
+                displayName: user.displayName || null
+            },
+            token
+        });
+    } catch (error) {
+        console.error('Email OTP verify error:', error);
+        res.status(500).json({ error: 'Verification failed' });
     }
 });
 
@@ -2269,7 +2476,7 @@ app.get('/api/health', (req, res) => {
         environment: {
             nodeEnv: process.env.NODE_ENV || 'development',
             port: PORT_NUM,
-            hasMongoUri: !!process.env.MONGO_URI,
+            hasMongoUri: !!(process.env.MONGO_URI || process.env.MONGODB_URI),
             hasJwtSecret: !!JWT_SECRET
         }
     });
