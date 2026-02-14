@@ -379,16 +379,29 @@ async function ensureUsersIndexesSparse() {
         const indexes = await coll.indexes();
         const emailIdx = indexes.find(i => i.name === 'email_1');
         if (emailIdx && !emailIdx.sparse) {
-            await coll.dropIndex('email_1');
-            console.log('Dropped non-sparse email_1 index (allows multiple phone-only users).');
+            try {
+                await coll.dropIndex('email_1');
+                console.log('Dropped non-sparse email_1 index (allows multiple phone-only users).');
+            } catch (dropErr) {
+                const msg = (dropErr.message || '').toLowerCase();
+                if (!msg.includes('index not found') && dropErr.codeName !== 'IndexNotFound' && dropErr.code !== 27) {
+                    console.warn('Could not drop email_1:', dropErr.message);
+                }
+            }
         }
         await User.syncIndexes();
     } catch (e) {
         console.warn('ensureUsersIndexesSparse:', e.message);
     }
 }
-mongoose.connection.once('connected', ensureUsersIndexesSparse);
-if (mongoose.connection.readyState === 1) ensureUsersIndexesSparse();
+function runEnsureIndexes() {
+    if (mongoose.connection.readyState === 1) {
+        ensureUsersIndexesSparse();
+    } else {
+        mongoose.connection.once('connected', ensureUsersIndexesSparse);
+    }
+}
+runEnsureIndexes();
 
 const Profile = mongoose.model('Profile', profileSchema);
 const Cart = mongoose.model('Cart', cartSchema);

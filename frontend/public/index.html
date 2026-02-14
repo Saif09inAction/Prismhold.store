@@ -3,7 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Prism Hold - Luxury Accessories</title>
+    <title>Prismhold - Luxury Accessories | Clutches, Jewelry & More</title>
+    <meta name="description" content="Prismhold - Luxury accessories curated for the modern lifestyle. Shop designer clutches, jewelry, bags & accessories. Hold elegance in your hand. Free shipping.">
+    <meta name="keywords" content="prismhold, prism hold, luxury accessories, designer clutches, luxury bags, jewelry, handbags">
+    <link rel="canonical" href="https://prismhold.store">
+    <!-- Favicon & Logo for Google search & browser -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    <!-- Open Graph for social sharing & search -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://prismhold.store">
+    <meta property="og:title" content="Prismhold - Luxury Accessories">
+    <meta property="og:description" content="Luxury accessories curated for the modern lifestyle. Hold elegance in your hand. Shop clutches, jewelry & more.">
+    <meta property="og:image" content="https://prismhold.store/logo.png">
+    <meta property="og:site_name" content="Prismhold">
+    <meta property="og:locale" content="en_IN">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Prismhold - Luxury Accessories">
+    <meta name="twitter:description" content="Luxury accessories curated for the modern lifestyle. Shop clutches, jewelry & more.">
+    <meta name="twitter:image" content="https://prismhold.store/logo.png">
     <!-- Load Tailwind CSS (Production Build) -->
     <link href="/tailwind.css" rel="stylesheet">
     <!-- Load Lucide Icons -->
@@ -366,6 +386,18 @@
         .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%); background-size: 200% 100%; animation: skeleton-shine 1.2s ease-in-out infinite; }
         @keyframes skeleton-shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
+    <!-- JSON-LD Organization schema for Google search -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Prismhold",
+      "url": "https://prismhold.store",
+      "logo": "https://prismhold.store/logo.png",
+      "description": "Luxury accessories curated for the modern lifestyle. Hold elegance in your hand.",
+      "sameAs": []
+    }
+    </script>
 </head>
 <body class="min-h-screen bg-bg-main text-primary">
 
@@ -941,7 +973,7 @@
     <header class="bg-white/98 backdrop-blur-xl shadow-sm sticky top-0 z-30 transition-all duration-300 border-b border-gray-100/50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-4">
             <button onclick="toggleMobileMenu()" class="md:hidden p-2.5 -ml-2 text-primary hover:bg-gray-100 rounded-full transition-all duration-200 active:scale-95" aria-label="Menu"><i data-lucide="menu" class="w-6 h-6"></i></button>
-            <a href="#home" class="text-2xl font-light tracking-[0.2em] text-primary hover:text-accent transition-all duration-300 text-center flex-grow md:flex-grow-0 cursor-pointer select-none hover:tracking-[0.25em]">PRISM HOLD</a>
+            <a href="#home" class="flex items-center justify-center flex-grow md:flex-grow-0 cursor-pointer select-none" aria-label="Prismhold Home"><img src="/logo.png" alt="Prismhold - Luxury Accessories" class="h-10 md:h-12 w-auto object-contain" loading="eager"></a>
             <nav class="hidden md:flex space-x-8 text-xs font-semibold tracking-widest text-gray-500">
                 <a href="#home" class="hover:text-primary transition-all duration-200 relative group">
                     HOME
