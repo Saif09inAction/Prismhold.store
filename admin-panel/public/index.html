@@ -629,7 +629,7 @@
                             <input type="file" id="product-image-file" accept="image/*" multiple class="hidden" onchange="handleMultipleImageFileSelect(event)">
                             <button type="button" onclick="document.getElementById('product-image-file').click()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm whitespace-nowrap">Upload Images</button>
                             <span class="text-sm text-gray-500 hidden sm:inline">or</span>
-                            <input type="text" id="product-image-url-input" placeholder="Add Image URL (Google Drive, direct link; max 1MB for uploads)" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                            <input type="text" id="product-image-url-input" placeholder="Add Image URL (Google Drive, direct link; max 5MB for uploads)" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
                             <button type="button" onclick="addImageFromUrl()" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm whitespace-nowrap">Add URL</button>
                         </div>
                         <div id="product-images-preview" class="mt-2 space-y-2">
@@ -1009,7 +1009,7 @@
         }
         
         // Multiple Images Management
-        const MAX_UPLOAD_SIZE = 1 * 1024 * 1024; // 1MB for device uploads (URLs have no limit)
+        const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB max; backend compresses to ~300-400KB (URLs have no limit)
         let productImages = [];
         let heroImages = [];
         let heroData = {};
@@ -1119,7 +1119,7 @@
             if (!files.length) return;
             for (const file of files) {
                 if (file.size > MAX_UPLOAD_SIZE) {
-                    alert(`Image "${file.name}" exceeds 1MB limit. Please use a smaller image or add via URL.`);
+                    alert(`Image "${file.name}" exceeds 5MB limit. Images are auto-compressed to ~300-400KB.`);
                     continue;
                 }
                 const formData = new FormData();
@@ -1153,7 +1153,7 @@
             
             for (const file of files) {
                 if (file.size > MAX_UPLOAD_SIZE) {
-                    alert(`Image "${file.name}" exceeds 1MB limit (${(file.size / 1024).toFixed(0)}KB). Please use a smaller image or add via URL.`);
+                    alert(`Image "${file.name}" exceeds 5MB limit (${(file.size / 1024).toFixed(0)}KB). Images are auto-compressed to ~300-400KB.`);
                     continue;
                 }
                 const formData = new FormData();
@@ -1750,7 +1750,7 @@
             const file = event.target.files[0];
             if (!file) return;
             if (file.size > MAX_UPLOAD_SIZE) {
-                alert(`Image exceeds 1MB limit. Please use a smaller image or add via URL.`);
+                alert(`Image exceeds 5MB limit. Images are auto-compressed to ~300-400KB.`);
                 event.target.value = '';
                 return;
             }

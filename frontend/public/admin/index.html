@@ -621,6 +621,7 @@
     <script>
         const API_BASE = window.API_BASE || "https://prismhold-store-1.onrender.com";
         const API_BASE_URL = `${API_BASE}/api`;
+        const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB; backend compresses to ~300-400KB
         let adminToken = localStorage.getItem('adminToken');
         let currentSection = 'dashboard-section';
         
@@ -885,6 +886,10 @@
             if (!files.length) return;
 
             for (const file of files) {
+                if (file.size > MAX_UPLOAD_SIZE) {
+                    alert(`"${file.name}" exceeds 5MB. Images are auto-compressed to ~300-400KB.`);
+                    continue;
+                }
                 const formData = new FormData();
                 formData.append('image', file);
                 try {
@@ -915,6 +920,10 @@
             if (!files.length) return;
             
             for (const file of files) {
+                if (file.size > MAX_UPLOAD_SIZE) {
+                    alert(`"${file.name}" exceeds 5MB (${(file.size/1024).toFixed(0)}KB). Images are auto-compressed to ~300-400KB.`);
+                    continue;
+                }
                 const formData = new FormData();
                 formData.append('image', file);
                 
@@ -1501,7 +1510,11 @@
         async function handleCategoryImageFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
+            if (file.size > MAX_UPLOAD_SIZE) {
+                alert('Image exceeds 5MB. Images are auto-compressed to ~300-400KB.');
+                event.target.value = '';
+                return;
+            }
             const formData = new FormData();
             formData.append('image', file);
             

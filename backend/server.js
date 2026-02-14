@@ -75,19 +75,23 @@ app.use(cors({
     credentials: true
 }));
 app.use(compression());
-app.use(express.json());
+app.use(express.json({ limit: '6mb' }));
 
-// Configure multer for file uploads - memory storage, images stored in MongoDB
+// Image upload: accept up to 5MB, compress to 300-400KB, store in MongoDB
+const UPLOAD_MAX_MB = 5;
+const UPLOAD_MAX_BYTES = UPLOAD_MAX_MB * 1024 * 1024;
+const TARGET_COMPRESS_KB = 400;
+const TARGET_COMPRESS_BYTES = TARGET_COMPRESS_KB * 1024;
+
 const storage = multer.memoryStorage();
 const upload = multer({
     storage,
     limits: { fileSize: 10 * 1024 * 1024 }
 });
-// Admin upload: max 10MB; compress with Sharp to ~300-400KB. Reject non-image.
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const adminUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 },
+    limits: { fileSize: UPLOAD_MAX_BYTES },
     fileFilter: (req, file, cb) => {
         if (file.mimetype && ALLOWED_IMAGE_TYPES.includes(file.mimetype)) return cb(null, true);
         cb(new Error('Only image files (JPEG, PNG, WebP, GIF) are allowed'));
@@ -2161,7 +2165,7 @@ app.get('/api/products/recommendations', async (req, res) => {
 app.post('/api/admin/upload', authenticateAdmin, (req, res, next) => {
     adminUpload.single('image')(req, res, (err) => {
         if (err && err.code === 'LIMIT_FILE_SIZE') {
-            return res.status(413).json({ error: 'Image must be 10MB or less.' });
+            return res.status(413).json({ error: `Image must be ${UPLOAD_MAX_MB}MB or less. Files are compressed to ~300-400KB before storing.` });
         }
         if (err && err.message) {
             return res.status(400).json({ error: err.message });
@@ -2174,7 +2178,6 @@ app.post('/api/admin/upload', authenticateAdmin, (req, res, next) => {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-        const TARGET_MAX_BYTES = 400 * 1024;
         const MAX_WIDTH = 1200;
         let buffer = req.file.buffer;
         let mimeType = req.file.mimetype;
@@ -2187,7 +2190,7 @@ app.post('/api/admin/upload', authenticateAdmin, (req, res, next) => {
             if (w > MAX_WIDTH) pipeline = pipeline.resize(MAX_WIDTH, null, { withoutEnlargement: true });
             let webpBuf = await pipeline.clone().webp({ quality: 82, effort: 4 }).toBuffer();
             let jpegBuf = await pipeline.clone().jpeg({ quality: 85, mozjpeg: true }).toBuffer();
-            for (let q = 80; (webpBuf.length > TARGET_MAX_BYTES || jpegBuf.length > TARGET_MAX_BYTES) && q >= 50; q -= 10) {
+            for (let q = 80; (webpBuf.length > TARGET_COMPRESS_BYTES || jpegBuf.length > TARGET_COMPRESS_BYTES) && q >= 40; q -= 8) {
                 webpBuf = await pipeline.clone().webp({ quality: q, effort: 4 }).toBuffer();
                 jpegBuf = await pipeline.clone().jpeg({ quality: q, mozjpeg: true }).toBuffer();
             }
