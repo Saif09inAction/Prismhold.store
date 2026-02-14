@@ -1412,7 +1412,7 @@
                 </div>
                 <!-- Phone OTP -->
                 <div id="auth-panel-phone" class="auth-panel hidden">
-                    <div id="recaptcha-container"></div>
+                    <div id="recaptcha-phone-wrapper"></div>
                     <div id="phone-step-1">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Phone number (10 digits)</label>
                         <input type="tel" id="auth-phone-input" placeholder="9876543210" maxlength="15" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-base" inputmode="numeric" pattern="[0-9]*">
@@ -1721,7 +1721,7 @@
             if (!email) { alertMessage('Enter your email', 'error'); return; }
             try {
                 await apiRequest('/auth/email-otp/send', { method: 'POST', body: JSON.stringify({ email }) });
-                alertMessage('OTP sent! Check your inbox.', 'success');
+                alertMessage('OTP sent! Check your inbox. (Valid 15 min)', 'success');
                 document.getElementById('email-step-1').classList.add('hidden');
                 document.getElementById('email-step-2').classList.remove('hidden');
                 document.getElementById('auth-email-otp').value = '';
@@ -1821,6 +1821,17 @@
             if (input.startsWith('+')) return input.replace(/\s/g, '');
             return '+91' + digits;
         }
+        function ensureRecaptchaVerifier() {
+            const wrapper = document.getElementById('recaptcha-phone-wrapper');
+            if (!wrapper) return null;
+            if (recaptchaVerifier) { try { recaptchaVerifier.clear(); } catch (e) {} recaptchaVerifier = null; }
+            wrapper.innerHTML = '';
+            const div = document.createElement('div');
+            div.id = 'recaptcha-container-' + Date.now();
+            wrapper.appendChild(div);
+            recaptchaVerifier = new firebase.auth.RecaptchaVerifier(div.id, { size: 'invisible', callback: () => {} });
+            return recaptchaVerifier;
+        }
         async function sendPhoneOtp() {
             if (!firebaseAuth) { alertMessage('Phone login is not configured. Add Firebase credentials.', 'error'); return; }
             const raw = document.getElementById('auth-phone-input')?.value?.trim() || '';
@@ -1830,9 +1841,9 @@
             const btn = document.getElementById('send-phone-otp-btn');
             btn.disabled = true;
             try {
-                if (recaptchaVerifier) { recaptchaVerifier.clear(); recaptchaVerifier = null; }
-                recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible', callback: () => {} });
-                phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, recaptchaVerifier);
+                const verifier = ensureRecaptchaVerifier();
+                if (!verifier) throw new Error('reCAPTCHA setup failed');
+                phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, verifier);
                 document.getElementById('phone-step-1').classList.add('hidden');
                 document.getElementById('phone-step-2').classList.remove('hidden');
                 document.getElementById('auth-phone-otp').value = '';
@@ -1840,8 +1851,7 @@
                 lucide.createIcons();
             } catch (e) {
                 alertMessage(e.message || 'Failed to send OTP', 'error');
-                if (recaptchaVerifier) recaptchaVerifier.clear();
-                recaptchaVerifier = null;
+                if (recaptchaVerifier) { try { recaptchaVerifier.clear(); } catch (x) {} recaptchaVerifier = null; }
             }
             btn.disabled = false;
         }
@@ -1866,9 +1876,9 @@
             const btn = document.getElementById('resend-phone-otp-btn');
             if (btn) btn.disabled = true;
             try {
-                if (recaptchaVerifier) { recaptchaVerifier.clear(); recaptchaVerifier = null; }
-                recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible', callback: () => {} });
-                phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, recaptchaVerifier);
+                const verifier = ensureRecaptchaVerifier();
+                if (!verifier) throw new Error('reCAPTCHA setup failed');
+                phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, verifier);
                 alertMessage('OTP resent! Check your phone.', 'success');
                 startResendPhoneCooldown();
             } catch (e) {
@@ -2052,7 +2062,7 @@
             try {
                 const result = await firebaseAuth.getRedirectResult();
                 if (result && result.user) {
-                    const idToken = await result.user.getIdToken();
+                    const idToken = await result.user.getIdToken(true);
                     const res = await apiRequest('/auth/firebase', { method: 'POST', body: JSON.stringify({ idToken }) });
                     const needsName = !res.user.displayName || !String(res.user.displayName).trim();
                     if (needsName) {
@@ -2077,9 +2087,13 @@
                     if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
                 }
             } catch (e) {
-                if (e.code !== 'auth/operation-not-allowed' && e.code !== 'auth/popup-closed-by-user') {
+                const code = e.code || '';
+                const msg = (e.message || '') + '';
+                if (code === 'auth/operation-not-allowed') {
+                    alertMessage('Google sign-in is not enabled. Please use Email or Phone.', 'error');
+                } else if (code !== 'auth/popup-closed-by-user' && !msg.includes('closed')) {
                     console.error('Google redirect result error:', e);
-                    alertMessage(e.message || 'Google sign-in failed. Please try again.', 'error');
+                    alertMessage(msg || 'Google sign-in failed. Please try again.', 'error');
                 }
             }
         }

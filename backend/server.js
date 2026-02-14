@@ -723,9 +723,10 @@ async function sendEmailOtp(email, otp) {
     if (RESEND_API_KEY) {
         const fromRaw = process.env.RESEND_FROM || process.env.SMTP_FROM;
         const from = fromRaw && fromRaw.includes('@') ? (fromRaw.includes('<') ? fromRaw : `Prism Hold <${fromRaw}>`) : 'onboarding@resend.dev';
+        const idempotencyKey = `otp-${email.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
         const r = await fetch('https://api.resend.com/emails', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Idempotency-Key': idempotencyKey },
             body: JSON.stringify({
                 from,
                 to: [email],
@@ -736,7 +737,8 @@ async function sendEmailOtp(email, otp) {
         let data = {};
         try { data = await r.json(); } catch (e) { data = { message: await r.text() || 'Invalid response' }; }
         if (!r.ok) {
-            const msg = data.message || data.error || data.msg || (typeof data === 'string' ? data : 'Resend API error');
+            let msg = data.message || data.error || data.msg || (typeof data === 'string' ? data : 'Resend API error');
+            if ((msg + '').toLowerCase().includes('duplicate') || r.status === 429) msg = 'Please wait a minute before requesting another OTP.';
             console.error('Resend API error:', r.status, msg);
             throw new Error(msg);
         }
