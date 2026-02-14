@@ -1270,10 +1270,12 @@
             <div class="w-full md:w-3/4 p-6 md:p-10 overflow-y-auto bg-white relative flex-grow">
                 <button onclick="toggleAccountModal()" class="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5 text-gray-400"></i></button>
                 <div id="tab-content-profile" class="account-tab-content hidden">
+                    <p id="profile-welcome" class="text-lg font-medium text-primary mb-2"></p>
                     <h2 class="text-2xl font-light text-primary mb-8">Profile Details</h2>
                     <div class="space-y-5 max-w-md">
                         <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1 tracking-wider">Full Name</label><input type="text" id="profile-name-input" class="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 font-medium"></div>
                         <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1 tracking-wider">Email Address</label><input type="email" id="profile-email-input" disabled class="w-full p-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 font-medium"></div>
+                        <button type="button" onclick="saveProfile()" class="px-6 py-2.5 luxury-button rounded-lg text-sm font-semibold">Save Profile</button>
                     </div>
                 </div>
                 <div id="tab-content-orders" class="account-tab-content hidden">
@@ -1378,7 +1380,7 @@
                 </div>
             </div>
             <div class="p-8">
-                <div class="flex gap-1 p-1 bg-gray-100 rounded-xl mb-6">
+                <div id="auth-tabs-bar" class="flex gap-1 p-1 bg-gray-100 rounded-xl mb-6">
                     <button type="button" onclick="setAuthTab('email')" id="auth-tab-email" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2">
                         <i data-lucide="mail" class="w-4 h-4"></i> Email
                     </button>
@@ -1404,6 +1406,7 @@
                         <button type="button" onclick="verifyEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mb-2">
                             <i data-lucide="check" class="w-4 h-4"></i> Verify & Continue
                         </button>
+                        <button type="button" onclick="resendEmailOtp()" id="resend-email-otp-btn" class="w-full py-2 text-sm text-gray-500 hover:text-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Resend OTP</button>
                         <button type="button" onclick="resetEmailOtpStep()" class="w-full py-2 text-sm text-gray-500 hover:text-accent transition-colors">Use different email</button>
                     </div>
                 </div>
@@ -1423,8 +1426,17 @@
                         <button type="button" onclick="verifyPhoneOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mb-2">
                             <i data-lucide="check" class="w-4 h-4"></i> Verify & Continue
                         </button>
+                        <button type="button" onclick="resendPhoneOtp()" id="resend-phone-otp-btn" class="w-full py-2 text-sm text-gray-500 hover:text-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Resend OTP</button>
                         <button type="button" onclick="resetPhoneOtpStep()" class="w-full py-2 text-sm text-gray-500 hover:text-accent transition-colors">Use different number</button>
                     </div>
+                </div>
+                <!-- New user: enter name (shown after OTP for users without name) -->
+                <div id="auth-panel-newuser-name" class="auth-panel hidden">
+                    <p class="text-sm text-gray-500 mb-4">Welcome! Please enter your name</p>
+                    <input type="text" id="auth-newuser-name" placeholder="Your name" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-base">
+                    <button type="button" onclick="submitNewUserName()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i> Continue
+                    </button>
                 </div>
                 <!-- Google -->
                 <div id="auth-panel-google" class="auth-panel hidden">
@@ -1677,16 +1689,24 @@
         function toggleAuthModal(mode) {
             const modal = document.getElementById('auth-modal');
             if (mode && modal.classList.contains('hidden')) {
-                setAuthTab(authTab);
+                pendingUserAuth = null;
+                setAuthTab(authTab === 'newuser-name' ? 'email' : authTab);
                 resetEmailOtpStep();
                 resetPhoneOtpStep();
                 modal.classList.remove('hidden');
             } else if (!mode) {
+                const isClosing = !modal.classList.contains('hidden');
                 modal.classList.toggle('hidden');
+                if (isClosing) { pendingUserAuth = null; }
             }
         }
+        let resendEmailOtpCooldown = 0;
+        let resendPhoneOtpCooldown = 0;
+        let pendingUserAuth = null;
         function setAuthTab(tab) {
             authTab = tab;
+            const tabBar = document.getElementById('auth-tabs-bar');
+            if (tabBar) tabBar.classList.toggle('hidden', tab === 'newuser-name');
             document.querySelectorAll('[id^="auth-tab-"]').forEach(btn => {
                 const isActive = btn.id === 'auth-tab-' + tab;
                 btn.className = 'flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ' + (isActive ? 'bg-white text-primary shadow-sm' : 'text-gray-600');
@@ -1705,14 +1725,38 @@
                 document.getElementById('email-step-1').classList.add('hidden');
                 document.getElementById('email-step-2').classList.remove('hidden');
                 document.getElementById('auth-email-otp').value = '';
+                startResendEmailCooldown();
                 lucide.createIcons();
             } catch (e) { alertMessage(e.message || 'Failed to send OTP', 'error'); }
+        }
+        function startResendEmailCooldown() {
+            resendEmailOtpCooldown = 60;
+            const btn = document.getElementById('resend-email-otp-btn');
+            if (!btn) return;
+            const iv = setInterval(() => {
+                resendEmailOtpCooldown--;
+                btn.textContent = resendEmailOtpCooldown > 0 ? `Resend OTP (${resendEmailOtpCooldown}s)` : 'Resend OTP';
+                btn.disabled = resendEmailOtpCooldown > 0;
+                if (resendEmailOtpCooldown <= 0) clearInterval(iv);
+            }, 1000);
+        }
+        async function resendEmailOtp() {
+            if (resendEmailOtpCooldown > 0) return;
+            const email = document.getElementById('auth-email-input')?.value?.trim();
+            if (!email) return;
+            try {
+                await apiRequest('/auth/email-otp/send', { method: 'POST', body: JSON.stringify({ email }) });
+                alertMessage('OTP resent! Check your inbox.', 'success');
+                startResendEmailCooldown();
+            } catch (e) { alertMessage(e.message || 'Failed to resend OTP', 'error'); }
         }
         function resetEmailOtpStep() {
             document.getElementById('email-step-1').classList.remove('hidden');
             document.getElementById('email-step-2').classList.add('hidden');
             document.getElementById('auth-email-input').value = '';
             document.getElementById('auth-email-otp').value = '';
+            const rb = document.getElementById('resend-email-otp-btn');
+            if (rb) { rb.textContent = 'Resend OTP'; rb.disabled = false; }
         }
         async function verifyEmailOtp() {
             const email = document.getElementById('auth-email-input')?.value?.trim();
@@ -1720,16 +1764,46 @@
             if (!email || !otp) { alertMessage('Enter the OTP from your email', 'error'); return; }
             try {
                 const res = await apiRequest('/auth/email-otp/verify', { method: 'POST', body: JSON.stringify({ email, otp }) });
+                const needsName = !res.user.displayName || !String(res.user.displayName).trim();
+                if (needsName) {
+                    setAuthToken(res.token);
+                    pendingUserAuth = { token: res.token, user: res.user };
+                    document.getElementById('auth-newuser-name').value = '';
+                    setAuthTab('newuser-name');
+                    return;
+                }
                 setAuthToken(res.token);
                 setCurrentUser(res.user);
                 window.currentUser = res.user;
                 window.updateAuthUI(true);
                 window.initUserDataListeners(res.user.uid);
                 connectStoreSocket();
-                alertMessage('Welcome!', 'success');
+                const name = res.user.displayName || '';
+                alertMessage(name ? `Welcome, ${name}!` : 'Welcome!', 'success');
                 toggleAuthModal();
                 if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
             } catch (e) { alertMessage(e.message || 'Invalid OTP', 'error'); }
+        }
+        async function submitNewUserName() {
+            if (!pendingUserAuth) { alertMessage('Session expired. Please sign in again.', 'error'); toggleAuthModal(); return; }
+            const name = document.getElementById('auth-newuser-name')?.value?.trim();
+            if (!name) { alertMessage('Please enter your name', 'error'); return; }
+            try {
+                setAuthToken(pendingUserAuth.token);
+                await apiRequest('/profile', { method: 'PUT', body: JSON.stringify({ displayName: name }) });
+                const user = { ...pendingUserAuth.user, displayName: name };
+                setCurrentUser(user);
+                window.currentUser = user;
+                pendingUserAuth = null;
+                window.updateAuthUI(true);
+                window.initUserDataListeners(user.uid);
+                connectStoreSocket();
+                alertMessage(`Welcome, ${name}!`, 'success');
+                toggleAuthModal();
+                if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
+            } catch (e) {
+                alertMessage(e.message || 'Failed to save name', 'error');
+            }
         }
         function resetPhoneOtpStep() {
             document.getElementById('phone-step-1').classList.remove('hidden');
@@ -1737,6 +1811,8 @@
             document.getElementById('auth-phone-input').value = '';
             document.getElementById('auth-phone-otp').value = '';
             phoneConfirmationResult = null;
+            const rb = document.getElementById('resend-phone-otp-btn');
+            if (rb) { rb.textContent = 'Resend OTP'; rb.disabled = false; }
         }
         function normalizePhoneForFirebase(input) {
             const digits = input.replace(/\D/g, '');
@@ -1754,13 +1830,13 @@
             const btn = document.getElementById('send-phone-otp-btn');
             btn.disabled = true;
             try {
-                if (!recaptchaVerifier) {
-                    recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible', callback: () => {} });
-                }
+                if (recaptchaVerifier) { recaptchaVerifier.clear(); recaptchaVerifier = null; }
+                recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible', callback: () => {} });
                 phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, recaptchaVerifier);
                 document.getElementById('phone-step-1').classList.add('hidden');
                 document.getElementById('phone-step-2').classList.remove('hidden');
                 document.getElementById('auth-phone-otp').value = '';
+                startResendPhoneCooldown();
                 lucide.createIcons();
             } catch (e) {
                 alertMessage(e.message || 'Failed to send OTP', 'error');
@@ -1769,24 +1845,68 @@
             }
             btn.disabled = false;
         }
+        function startResendPhoneCooldown() {
+            resendPhoneOtpCooldown = 60;
+            const btn = document.getElementById('resend-phone-otp-btn');
+            if (!btn) return;
+            const iv = setInterval(() => {
+                resendPhoneOtpCooldown--;
+                btn.textContent = resendPhoneOtpCooldown > 0 ? `Resend OTP (${resendPhoneOtpCooldown}s)` : 'Resend OTP';
+                btn.disabled = resendPhoneOtpCooldown > 0;
+                if (resendPhoneOtpCooldown <= 0) clearInterval(iv);
+            }, 1000);
+        }
+        async function resendPhoneOtp() {
+            if (resendPhoneOtpCooldown > 0) return;
+            if (!firebaseAuth) return;
+            const raw = document.getElementById('auth-phone-input')?.value?.trim() || '';
+            const digits = raw.replace(/\D/g, '');
+            if (digits.length < 10) { alertMessage('Enter your 10-digit phone number', 'error'); return; }
+            const phone = normalizePhoneForFirebase(raw);
+            const btn = document.getElementById('resend-phone-otp-btn');
+            if (btn) btn.disabled = true;
+            try {
+                if (recaptchaVerifier) { recaptchaVerifier.clear(); recaptchaVerifier = null; }
+                recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', { size: 'invisible', callback: () => {} });
+                phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, recaptchaVerifier);
+                alertMessage('OTP resent! Check your phone.', 'success');
+                startResendPhoneCooldown();
+            } catch (e) {
+                alertMessage(e.message || 'Failed to resend OTP', 'error');
+            }
+            if (btn) btn.disabled = false;
+        }
         async function verifyPhoneOtp() {
             if (!phoneConfirmationResult) { alertMessage('Request OTP first', 'error'); return; }
             const otp = document.getElementById('auth-phone-otp')?.value?.trim();
             if (!otp) { alertMessage('Enter the OTP from your phone', 'error'); return; }
             try {
                 const cred = await phoneConfirmationResult.confirm(otp);
-                const idToken = await cred.user.getIdToken();
+                const idToken = await cred.user.getIdToken(true);
                 const res = await apiRequest('/auth/firebase', { method: 'POST', body: JSON.stringify({ idToken }) });
+                const needsName = !res.user.displayName || !String(res.user.displayName).trim();
+                if (needsName) {
+                    setAuthToken(res.token);
+                    pendingUserAuth = { token: res.token, user: res.user };
+                    document.getElementById('auth-newuser-name').value = '';
+                    setAuthTab('newuser-name');
+                    return;
+                }
                 setAuthToken(res.token);
                 setCurrentUser(res.user);
                 window.currentUser = res.user;
                 window.updateAuthUI(true);
                 window.initUserDataListeners(res.user.uid);
                 connectStoreSocket();
-                alertMessage('Welcome!', 'success');
+                const name = res.user.displayName || '';
+                alertMessage(name ? `Welcome, ${name}!` : 'Welcome!', 'success');
                 toggleAuthModal();
                 if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
-            } catch (e) { alertMessage(e.message || 'Invalid OTP', 'error'); }
+            } catch (e) {
+                const msg = (e.message || 'Invalid OTP') + '';
+                const isExpired = msg.toLowerCase().includes('expire') || (e.code && (e.code === 'auth/code-expired' || e.code === 'auth/session-expired'));
+                alertMessage(isExpired ? 'OTP expired. Please click Resend OTP and try again.' : (e.message || 'Invalid OTP'), 'error');
+            }
         }
 
         // --- API AUTHENTICATION ---
@@ -1803,6 +1923,8 @@
                     const name = profile.displayName || window.currentUser.displayName || '';
                     document.getElementById('profile-email-input').value = email || "";
                     document.getElementById('profile-name-input').value = name || "";
+                    const welcomeEl = document.getElementById('profile-welcome');
+                    if (welcomeEl) welcomeEl.textContent = name ? `Welcome, ${name}` : '';
                 } catch (error) {
                     console.error('Failed to load profile:', error);
                 }
@@ -1813,6 +1935,20 @@
             }
             lucide.createIcons();
         };
+        async function saveProfile() {
+            const name = document.getElementById('profile-name-input')?.value?.trim();
+            if (!name) { alertMessage('Enter your name', 'error'); return; }
+            try {
+                await apiRequest('/profile', { method: 'PUT', body: JSON.stringify({ displayName: name }) });
+                if (window.currentUser) {
+                    window.currentUser.displayName = name;
+                    setCurrentUser(window.currentUser);
+                }
+                const welcomeEl = document.getElementById('profile-welcome');
+                if (welcomeEl) welcomeEl.textContent = `Welcome, ${name}`;
+                alertMessage('Profile saved', 'success');
+            } catch (e) { alertMessage(e.message || 'Failed to save profile', 'error'); }
+        }
 
         function mergeCartItems(guestItems, serverItems) {
             const byId = new Map();
@@ -1918,18 +2054,33 @@
                 if (result && result.user) {
                     const idToken = await result.user.getIdToken();
                     const res = await apiRequest('/auth/firebase', { method: 'POST', body: JSON.stringify({ idToken }) });
+                    const needsName = !res.user.displayName || !String(res.user.displayName).trim();
+                    if (needsName) {
+                        setAuthToken(res.token);
+                        pendingUserAuth = { token: res.token, user: res.user };
+                        document.getElementById('auth-newuser-name').value = '';
+                        if (document.getElementById('auth-modal').classList.contains('hidden')) {
+                            document.getElementById('auth-modal').classList.remove('hidden');
+                        }
+                        setAuthTab('newuser-name');
+                        return;
+                    }
                     setAuthToken(res.token);
                     setCurrentUser(res.user);
                     window.currentUser = res.user;
                     window.updateAuthUI(true);
                     window.initUserDataListeners(res.user.uid);
                     connectStoreSocket();
-                    alertMessage('Welcome!', 'success');
+                    const name = res.user.displayName || '';
+                    alertMessage(name ? `Welcome, ${name}!` : 'Welcome!', 'success');
                     if (document.getElementById('auth-modal') && !document.getElementById('auth-modal').classList.contains('hidden')) toggleAuthModal();
                     if (window.pendingCheckout) { window.pendingCheckout = false; initiateCheckout(); }
                 }
             } catch (e) {
-                if (e.code !== 'auth/operation-not-allowed' && e.code !== 'auth/popup-closed-by-user') console.error('Google redirect result error:', e);
+                if (e.code !== 'auth/operation-not-allowed' && e.code !== 'auth/popup-closed-by-user') {
+                    console.error('Google redirect result error:', e);
+                    alertMessage(e.message || 'Google sign-in failed. Please try again.', 'error');
+                }
             }
         }
 
@@ -3290,12 +3441,18 @@
             }
         });
 
-        document.addEventListener('DOMContentLoaded', () => { 
+        function runOnReady(fn) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', fn);
+            } else {
+                fn();
+            }
+        }
+        runOnReady(() => { 
+            handleGoogleRedirectResult();
             filterProducts(); 
             renderCart(); 
             lucide.createIcons();
-            handleGoogleRedirectResult();
-            // Re-initialize icons after footer loads
             setTimeout(() => lucide.createIcons(), 100);
         });
     </script>

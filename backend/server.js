@@ -194,8 +194,9 @@ const emailOtpStore = new Map(); // email -> { otp, expiresAt }
 function generateEmailOtp() {
     return String(Math.floor(100000 + Math.random() * 900000));
 }
+const EMAIL_OTP_TTL_MINUTES = 15;
 function setEmailOtp(email, otp) {
-    emailOtpStore.set(email.toLowerCase(), { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+    emailOtpStore.set(email.toLowerCase(), { otp, expiresAt: Date.now() + EMAIL_OTP_TTL_MINUTES * 60 * 1000 });
 }
 function verifyEmailOtp(email, otp) {
     const entry = emailOtpStore.get(email.toLowerCase());
@@ -708,7 +709,11 @@ app.post('/api/auth/firebase', async (req, res) => {
         });
     } catch (error) {
         console.error('Firebase auth error:', error);
-        res.status(401).json({ error: 'Invalid or expired token' });
+        let msg = 'Invalid or expired token';
+        if (error.code === 'auth/id-token-expired' || (error.message || '').toLowerCase().includes('expired')) {
+            msg = 'Session expired. Please click Resend OTP and try again.';
+        } else if (error.message) msg = error.message;
+        res.status(401).json({ error: msg });
     }
 });
 
@@ -725,7 +730,7 @@ async function sendEmailOtp(email, otp) {
                 from,
                 to: [email],
                 subject: 'Your Prism Hold login code',
-                html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p><p>- Prism Hold</p>`
+                html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in ${EMAIL_OTP_TTL_MINUTES} minutes.</p><p>- Prism Hold</p>`
             })
         });
         let data = {};
@@ -750,8 +755,8 @@ async function sendEmailOtp(email, otp) {
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: email,
         subject: 'Your Prism Hold login code',
-        text: `Your one-time password is: ${otp}\n\nIt expires in 5 minutes.\n\n- Prism Hold`,
-        html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p><p>- Prism Hold</p>`
+        text: `Your one-time password is: ${otp}\n\nIt expires in ${EMAIL_OTP_TTL_MINUTES} minutes.\n\n- Prism Hold`,
+        html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in ${EMAIL_OTP_TTL_MINUTES} minutes.</p><p>- Prism Hold</p>`
     });
 }
 
@@ -841,11 +846,19 @@ app.get('/api/profile', authenticateToken, async (req, res) => {
 app.put('/api/profile', authenticateToken, async (req, res) => {
     try {
         const { email, displayName } = req.body;
-        await Profile.findOneAndUpdate(
-            { userId: req.user._id },
-            { email, displayName },
-            { upsert: true, new: true }
-        );
+        const updateData = {};
+        if (email !== undefined) updateData.email = email;
+        if (displayName !== undefined) {
+            updateData.displayName = displayName;
+            await User.findByIdAndUpdate(req.user._id, { displayName });
+        }
+        if (Object.keys(updateData).length > 0) {
+            await Profile.findOneAndUpdate(
+                { userId: req.user._id },
+                { $set: updateData },
+                { upsert: true, new: true }
+            );
+        }
         res.json({ success: true });
     } catch (error) {
         console.error('Update profile error:', error);
