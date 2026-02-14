@@ -707,7 +707,43 @@ app.post('/api/auth/firebase', async (req, res) => {
     }
 });
 
-// Email OTP - Send
+// Email OTP - Send (Resend API works on Render; SMTP is blocked on free tier)
+async function sendEmailOtp(email, otp) {
+    const RESEND_API_KEY = process.env.RESEND_API_KEY;
+    if (RESEND_API_KEY) {
+        const from = process.env.RESEND_FROM || process.env.SMTP_FROM || 'Prism Hold <onboarding@resend.dev>';
+        const r = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+            body: JSON.stringify({
+                from: from.includes('<') ? from : `Prism Hold <${from}>`,
+                to: [email],
+                subject: 'Your Prism Hold login code',
+                html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p><p>- Prism Hold</p>`
+            })
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.message || 'Resend API error');
+        return;
+    }
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        throw new Error('Email OTP is not configured. Add RESEND_API_KEY (recommended for Render) or SMTP credentials.');
+    }
+    const transport = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: false,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+    });
+    await transport.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: email,
+        subject: 'Your Prism Hold login code',
+        text: `Your one-time password is: ${otp}\n\nIt expires in 5 minutes.\n\n- Prism Hold`,
+        html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p><p>- Prism Hold</p>`
+    });
+}
+
 app.post('/api/auth/email-otp/send', async (req, res) => {
     try {
         const { email } = req.body;
@@ -717,25 +753,7 @@ app.post('/api/auth/email-otp/send', async (req, res) => {
         const otp = generateEmailOtp();
         setEmailOtp(email, otp);
 
-        const transport = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.gmail.com',
-            port: Number(process.env.SMTP_PORT) || 587,
-            secure: false,
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS
-            }
-        });
-        if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-            return res.status(503).json({ error: 'Email OTP is not configured (SMTP missing)' });
-        }
-        await transport.sendMail({
-            from: process.env.SMTP_FROM || process.env.SMTP_USER,
-            to: email,
-            subject: 'Your Prism Hold login code',
-            text: `Your one-time password is: ${otp}\n\nIt expires in 5 minutes.\n\n- Prism Hold`,
-            html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p><p>- Prism Hold</p>`
-        });
+        await sendEmailOtp(email, otp);
         res.json({ success: true, message: 'OTP sent to your email' });
     } catch (error) {
         console.error('Email OTP send error:', error);
@@ -2063,28 +2081,34 @@ app.get('/api/products/by-category/:category', async (req, res) => {
     }
 });
 
-// Recommendation endpoint
-app.get('/api/products/recommendations', authenticateToken, async (req, res) => {
+// Recommendation endpoint (public - returns popular products when not logged in)
+app.get('/api/products/recommendations', async (req, res) => {
     try {
-        // Get user's order history
-        const userOrders = await Order.find({ userId: req.user._id })
+        const token = req.headers['authorization']?.split(' ')[1];
+        let userId = null;
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+                const u = await User.findById(decoded.userId);
+                if (u) userId = u._id;
+            } catch (e) { /* ignore */ }
+        }
+        let recommendations = [];
+        if (userId) {
+            const userOrders = await Order.find({ userId })
             .sort({ createdAt: -1 })
             .limit(10);
         
-        // Extract categories from user's orders
-        const userCategories = new Set();
-        userOrders.forEach(order => {
-            order.items.forEach(item => {
-                if (item.category) userCategories.add(item.category);
+            const userCategories = new Set();
+            userOrders.forEach(order => {
+                order.items.forEach(item => {
+                    if (item.category) userCategories.add(item.category);
+                });
             });
-        });
-        
-        // Get products from user's preferred categories
-        let recommendations = await Product.find({ 
-            category: { $in: Array.from(userCategories) }
-        }).sort({ orders: -1, views: -1 }).limit(8);
-        
-        // If not enough recommendations, add most popular products
+            recommendations = await Product.find({ 
+                category: { $in: Array.from(userCategories) }
+            }).sort({ orders: -1, views: -1 }).limit(8);
+        }
         if (recommendations.length < 8) {
             const popular = await Product.find({ 
                 _id: { $nin: recommendations.map(p => p._id) }
