@@ -166,22 +166,27 @@ if (serviceAccountJson) {
     } catch (err) {
         console.warn('⚠️ Firebase Admin init failed:', err.message);
     }
-} else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
-    try {
-        admin.initializeApp({
-            credential: admin.credential.cert({
-                projectId: process.env.FIREBASE_PROJECT_ID,
-                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-            })
-        });
-        firebaseAdminInitialized = true;
-        console.log('✅ Firebase Admin initialized');
-    } catch (err) {
-        console.warn('⚠️ Firebase Admin init failed:', err.message);
-    }
 } else {
-    console.warn('⚠️ Firebase credentials not set. Phone OTP & Google via Firebase will not work.');
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.project_id;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || process.env.client_email;
+    const privateKey = (process.env.FIREBASE_PRIVATE_KEY || process.env.private_key || '').replace(/\\n/g, '\n');
+    if (projectId && clientEmail && privateKey) {
+        try {
+            admin.initializeApp({
+                credential: admin.credential.cert({
+                    projectId,
+                    clientEmail,
+                    privateKey
+                })
+            });
+            firebaseAdminInitialized = true;
+            console.log('✅ Firebase Admin initialized');
+        } catch (err) {
+            console.warn('⚠️ Firebase Admin init failed:', err.message);
+        }
+    } else {
+        console.warn('⚠️ Firebase credentials not set. Phone OTP & Google via Firebase will not work.');
+    }
 }
 
 // In-memory OTP store for email OTP (use Redis in production for multi-instance)
@@ -711,19 +716,25 @@ app.post('/api/auth/firebase', async (req, res) => {
 async function sendEmailOtp(email, otp) {
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     if (RESEND_API_KEY) {
-        const from = process.env.RESEND_FROM || process.env.SMTP_FROM || 'Prism Hold <onboarding@resend.dev>';
+        const fromRaw = process.env.RESEND_FROM || process.env.SMTP_FROM;
+        const from = fromRaw && fromRaw.includes('@') ? (fromRaw.includes('<') ? fromRaw : `Prism Hold <${fromRaw}>`) : 'onboarding@resend.dev';
         const r = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
             body: JSON.stringify({
-                from: from.includes('<') ? from : `Prism Hold <${from}>`,
+                from,
                 to: [email],
                 subject: 'Your Prism Hold login code',
                 html: `<p>Your one-time password is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p><p>- Prism Hold</p>`
             })
         });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.message || 'Resend API error');
+        let data = {};
+        try { data = await r.json(); } catch (e) { data = { message: await r.text() || 'Invalid response' }; }
+        if (!r.ok) {
+            const msg = data.message || data.error || data.msg || (typeof data === 'string' ? data : 'Resend API error');
+            console.error('Resend API error:', r.status, msg);
+            throw new Error(msg);
+        }
         return;
     }
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -757,7 +768,8 @@ app.post('/api/auth/email-otp/send', async (req, res) => {
         res.json({ success: true, message: 'OTP sent to your email' });
     } catch (error) {
         console.error('Email OTP send error:', error);
-        res.status(500).json({ error: 'Failed to send OTP' });
+        const msg = error.message || 'Failed to send OTP';
+        res.status(500).json({ error: msg });
     }
 });
 

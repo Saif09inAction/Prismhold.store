@@ -11,6 +11,7 @@ yarn-error.log*
 
 # Firebase service account (never commit)
 *serviceAccount*.json
+RENDER_FIREBASE_ENV.txt
 
 # Uploads (if you want to ignore uploaded files)
 # uploads/
