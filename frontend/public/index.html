@@ -130,12 +130,16 @@
         #cart-modal.open { transform: translateX(0); } 
         #mobile-menu.open { transform: translateX(0); }
         
-        /* Hero Section */
+        /* Hero Section - no default image to prevent flash; JS sets background from API */
         .hero-bg { 
-            background-image: url('image.png'); 
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
             background-size: cover; 
-            background-position: center; 
+            background-position: center center; 
+            background-repeat: no-repeat;
             position: relative;
+        }
+        @media (max-width: 768px) {
+            .hero-bg { background-position: center 40%; }
         }
         .hero-bg::before {
             content: '';
@@ -601,7 +605,8 @@
                 const data = await res.json();
                 console.log('[Hero] Loaded data from API:', data);
                 heroData = data;
-                heroImages = Array.isArray(data.images) && data.images.length ? data.images.map(toDirectImageUrl) : ['image.png'];
+                const raw = Array.isArray(data.images) ? data.images.map(toDirectImageUrl).filter(Boolean) : [];
+                heroImages = raw.filter(img => !/image\.png$/i.test(img || ''));
                 applyHeroStyles(data);
                 startHeroRotation();
             } catch (error) {
@@ -617,7 +622,7 @@
                     fontWeight: 'normal',
                     textDecoration: 'none',
                     color: '#0f172a',
-                    images: ['image.png'],
+                    images: [],
                     showContainer: true,
                     showButton: true,
                     showBrandTag: true,
@@ -719,24 +724,27 @@
                 console.log('[Hero] Subtitle visibility:', showSubtitle, 'showSubtitle value:', data.showSubtitle);
             }
 
-            // Set first background immediately
-            const firstImage = (heroImages && heroImages.length) ? heroImages[0] : 'image.png';
-            heroSection.style.backgroundImage = `url('${firstImage}')`;
+            // Set background only if we have images from API (no image.png fallback to avoid flash)
+            if (heroImages && heroImages.length > 0) {
+                heroSection.style.backgroundImage = `url('${heroImages[0]}')`;
+                heroSection.style.backgroundSize = 'cover';
+                heroSection.style.backgroundPosition = window.innerWidth <= 768 ? 'center 40%' : 'center center';
+            } else {
+                heroSection.style.backgroundImage = 'none';
+                heroSection.style.background = 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)';
+            }
         }
 
         function startHeroRotation() {
             const heroSection = document.getElementById('home');
             if (!heroSection) return;
-            if (!heroImages || !heroImages.length) {
-                heroImages = ['image.png'];
-            }
-            if (heroRotationInterval) {
-                clearInterval(heroRotationInterval);
-            }
+            if (!heroImages || heroImages.length < 2) return;
+            if (heroRotationInterval) clearInterval(heroRotationInterval);
             let idx = 0;
             heroRotationInterval = setInterval(() => {
                 idx = (idx + 1) % heroImages.length;
                 heroSection.style.backgroundImage = `url('${heroImages[idx]}')`;
+                heroSection.style.backgroundPosition = window.innerWidth <= 768 ? 'center 40%' : 'center center';
             }, 5000);
         }
 
@@ -1002,7 +1010,7 @@
 
     <!-- Main Content -->
     <main class="min-h-screen pb-24">
-        <section id="home" class="hero-bg h-[550px] md:h-[700px] flex items-center justify-center text-center px-4 relative overflow-hidden">
+        <section id="home" class="hero-bg h-[400px] md:h-[700px] flex items-center justify-center text-center px-4 relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-transparent"></div>
             <!-- Container (can be hidden, but content stays visible) -->
             <div id="hero-container" class="p-8 md:p-12 bg-white/90 backdrop-blur-xl max-w-3xl mx-auto shadow-2xl rounded-3xl relative z-10 animate-fade-in-up border border-white/20">

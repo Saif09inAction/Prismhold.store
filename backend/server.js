@@ -220,6 +220,10 @@ const userSchema = new mongoose.Schema({
     isAdmin: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
 });
+// Ensure sparse unique index so multiple phone-only users (email: null) are allowed
+userSchema.index({ email: 1 }, { unique: true, sparse: true });
+userSchema.index({ phone: 1 }, { unique: true, sparse: true });
+userSchema.index({ firebaseUid: 1 }, { unique: true, sparse: true });
 
 const profileSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -365,6 +369,27 @@ const settingsSchema = new mongoose.Schema({
 const Settings = mongoose.model('Settings', settingsSchema);
 
 const User = mongoose.model('User', userSchema);
+
+// Fix duplicate key on email: null — drop old non-sparse email index so phone-only users can sign up
+async function ensureUsersIndexesSparse() {
+    try {
+        const conn = mongoose.connection;
+        if (conn.readyState !== 1) return;
+        const coll = conn.collection('users');
+        const indexes = await coll.indexes();
+        const emailIdx = indexes.find(i => i.name === 'email_1');
+        if (emailIdx && !emailIdx.sparse) {
+            await coll.dropIndex('email_1');
+            console.log('Dropped non-sparse email_1 index (allows multiple phone-only users).');
+        }
+        await User.syncIndexes();
+    } catch (e) {
+        console.warn('ensureUsersIndexesSparse:', e.message);
+    }
+}
+mongoose.connection.once('connected', ensureUsersIndexesSparse);
+if (mongoose.connection.readyState === 1) ensureUsersIndexesSparse();
+
 const Profile = mongoose.model('Profile', profileSchema);
 const Cart = mongoose.model('Cart', cartSchema);
 const Address = mongoose.model('Address', addressSchema);
