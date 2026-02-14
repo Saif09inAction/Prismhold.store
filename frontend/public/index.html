@@ -1365,15 +1365,15 @@
 
     <div id="auth-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4" onclick="closeAuthModal(event)">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-scale-in border border-gray-100" onclick="event.stopPropagation()">
-            <div class="bg-gradient-to-br from-primary via-gray-900 to-primary px-8 py-6 text-white">
+            <div class="px-8 py-6" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);">
                 <div class="flex justify-between items-start">
                     <div>
-                        <p class="text-xs uppercase tracking-[0.3em] text-white/70 mb-1">Welcome to</p>
-                        <h3 class="text-2xl font-bold tracking-tight">PRISM HOLD</h3>
-                        <p class="text-sm text-white/80 mt-1">Sign in to continue</p>
+                        <p class="text-xs uppercase tracking-[0.3em] mb-1" style="color: rgba(255,255,255,0.8);">Welcome to</p>
+                        <h3 class="text-2xl font-bold tracking-tight" style="color: #ffffff;">PRISM HOLD</h3>
+                        <p class="text-sm mt-1" style="color: rgba(255,255,255,0.9);">Sign in to continue</p>
                     </div>
-                    <button onclick="toggleAuthModal()" class="p-2.5 hover:bg-white/10 rounded-full transition-all duration-200 active:scale-95" aria-label="Close">
-                        <i data-lucide="x" class="w-5 h-5"></i>
+                    <button onclick="toggleAuthModal()" class="p-2.5 rounded-full transition-all duration-200 active:scale-95 flex items-center justify-center" style="background: rgba(255,255,255,0.15); color: #ffffff;" aria-label="Close" title="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
             </div>
