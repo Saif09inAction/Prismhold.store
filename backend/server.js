@@ -733,13 +733,10 @@ app.post('/api/auth/firebase', async (req, res) => {
         });
 
         if (!user) {
-            user = new User({
-                firebaseUid,
-                email: email || null,
-                phone: phone || null,
-                displayName: displayName || null,
-                password: null
-            });
+            const userData = { firebaseUid, displayName: displayName || null, password: null };
+            if (email) userData.email = email;   // Omit email for phone-only; sparse index excludes missing field
+            if (phone) userData.phone = phone;
+            user = new User(userData);
             await user.save();
             const profile = new Profile({
                 userId: user._id,
