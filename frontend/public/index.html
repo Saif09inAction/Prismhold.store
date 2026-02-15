@@ -1401,7 +1401,7 @@
                     <h2 class="text-2xl font-light text-primary mb-8">Profile Details</h2>
                     <div class="space-y-5 max-w-md">
                         <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1 tracking-wider">Full Name</label><input type="text" id="profile-name-input" class="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 font-medium"></div>
-                        <div><label class="block text-xs font-bold text-gray-400 uppercase mb-1 tracking-wider">Email Address</label><input type="email" id="profile-email-input" disabled class="w-full p-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 font-medium"></div>
+                        <div><label id="profile-contact-label" class="block text-xs font-bold text-gray-400 uppercase mb-1 tracking-wider">Email Address</label><input type="email" id="profile-email-input" disabled class="w-full p-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 font-medium"></div>
                         <button type="button" onclick="saveProfile()" class="px-6 py-2.5 luxury-button rounded-lg text-sm font-semibold">Save Profile</button>
                     </div>
                 </div>
@@ -2056,10 +2056,19 @@
                 btnContainer.classList.remove('hidden');
                 try {
                     const profile = await apiRequest('/profile');
-                    const email = profile.email || window.currentUser.email || window.currentUser.phone || '';
+                    const contactVal = profile.email || window.currentUser.email || window.currentUser.phone || '';
                     const name = profile.displayName || window.currentUser.displayName || '';
-                    document.getElementById('profile-email-input').value = email || "";
+                    document.getElementById('profile-email-input').value = contactVal || "";
                     document.getElementById('profile-name-input').value = name || "";
+                    const contactLabel = document.getElementById('profile-contact-label');
+                    const contactInput = document.getElementById('profile-email-input');
+                    if (window.currentUser.phone && !window.currentUser.email) {
+                        if (contactLabel) contactLabel.textContent = 'Mobile Number';
+                        if (contactInput) contactInput.type = 'tel';
+                    } else {
+                        if (contactLabel) contactLabel.textContent = 'Email Address';
+                        if (contactInput) contactInput.type = 'email';
+                    }
                     const welcomeEl = document.getElementById('profile-welcome');
                     if (welcomeEl) welcomeEl.textContent = name ? `Welcome, ${name}` : '';
                 } catch (error) {
