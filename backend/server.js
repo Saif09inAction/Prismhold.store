@@ -350,13 +350,18 @@ const heroSchema = new mongoose.Schema({
     fontWeight: { type: String, enum: ['normal', 'semibold', 'bold', 'bolder'], default: 'normal' },
     textDecoration: { type: String, enum: ['none', 'underline', 'line-through'], default: 'none' },
     color: { type: String, default: '#0f172a' },
-    images: { type: [String], default: [] }, // Store image IDs (MongoDB ObjectIds)
+    images: { type: [String], default: [] }, // PC/desktop hero images
+    mobileImages: { type: [String], default: [] }, // Mobile-only hero images
     // Visibility controls
     showContainer: { type: Boolean, default: true }, // White container behind tagline
     showButton: { type: Boolean, default: true }, // Discover Collection button
-    showBrandTag: { type: Boolean, default: true }, // Brand tag visibility
-    showTitle: { type: Boolean, default: true }, // Title visibility
-    showSubtitle: { type: Boolean, default: true }, // Subtitle visibility
+    showBrandTag: { type: Boolean, default: true }, // Brand tag visibility (legacy)
+    showTitle: { type: Boolean, default: true }, // Title visibility (legacy)
+    showSubtitle: { type: Boolean, default: true }, // Subtitle visibility (legacy)
+    // Device visibility: 'mobile' | 'pc' | 'both'
+    showBrandTagDevice: { type: String, enum: ['mobile', 'pc', 'both'], default: 'both' },
+    showTitleDevice: { type: String, enum: ['mobile', 'pc', 'both'], default: 'both' },
+    showSubtitleDevice: { type: String, enum: ['mobile', 'pc', 'both'], default: 'both' },
     updatedAt: { type: Date, default: Date.now }
 });
 
@@ -483,6 +488,9 @@ function convertHeroImages(hero) {
     const heroObj = hero.toObject ? hero.toObject() : hero;
     if (heroObj.images && Array.isArray(heroObj.images)) {
         heroObj.images = heroObj.images.map(img => convertImageToUrl(img)).filter(Boolean);
+    }
+    if (heroObj.mobileImages && Array.isArray(heroObj.mobileImages)) {
+        heroObj.mobileImages = heroObj.mobileImages.map(img => convertImageToUrl(img)).filter(Boolean);
     }
     return heroObj;
 }
@@ -2373,11 +2381,15 @@ app.put('/api/admin/hero', authenticateAdmin, async (req, res) => {
             textDecoration,
             color,
             images,
+            mobileImages,
             showContainer,
             showButton,
             showBrandTag,
             showTitle,
-            showSubtitle
+            showSubtitle,
+            showBrandTagDevice,
+            showTitleDevice,
+            showSubtitleDevice
         } = req.body;
 
         const payload = {
@@ -2385,33 +2397,25 @@ app.put('/api/admin/hero', authenticateAdmin, async (req, res) => {
             ...(subtitle !== undefined && { subtitle }),
             ...(brandTag !== undefined && { brandTag }),
             ...(textAlign !== undefined && { textAlign }),
-            ...(fontSize !== undefined && { fontSize }), // Keep for backward compatibility
+            ...(fontSize !== undefined && { fontSize }),
             ...(titleFontSize !== undefined && { titleFontSize }),
             ...(subtitleFontSize !== undefined && { subtitleFontSize }),
             ...(fontWeight !== undefined && { fontWeight }),
             ...(textDecoration !== undefined && { textDecoration }),
             ...(color !== undefined && { color }),
             ...(Array.isArray(images) && { images: images.filter(Boolean) }),
+            ...(Array.isArray(mobileImages) && { mobileImages: mobileImages.filter(Boolean) }),
             updatedAt: new Date()
         };
 
-        // Always include boolean values if they are provided (even if false)
-        // This ensures they are saved to the database
-        if (showContainer !== undefined) {
-            payload.showContainer = Boolean(showContainer);
-        }
-        if (showButton !== undefined) {
-            payload.showButton = Boolean(showButton);
-        }
-        if (showBrandTag !== undefined) {
-            payload.showBrandTag = Boolean(showBrandTag);
-        }
-        if (showTitle !== undefined) {
-            payload.showTitle = Boolean(showTitle);
-        }
-        if (showSubtitle !== undefined) {
-            payload.showSubtitle = Boolean(showSubtitle);
-        }
+        if (showContainer !== undefined) payload.showContainer = Boolean(showContainer);
+        if (showButton !== undefined) payload.showButton = Boolean(showButton);
+        if (showBrandTag !== undefined) payload.showBrandTag = Boolean(showBrandTag);
+        if (showTitle !== undefined) payload.showTitle = Boolean(showTitle);
+        if (showSubtitle !== undefined) payload.showSubtitle = Boolean(showSubtitle);
+        if (showBrandTagDevice !== undefined && ['mobile', 'pc', 'both'].includes(showBrandTagDevice)) payload.showBrandTagDevice = showBrandTagDevice;
+        if (showTitleDevice !== undefined && ['mobile', 'pc', 'both'].includes(showTitleDevice)) payload.showTitleDevice = showTitleDevice;
+        if (showSubtitleDevice !== undefined && ['mobile', 'pc', 'both'].includes(showSubtitleDevice)) payload.showSubtitleDevice = showSubtitleDevice;
 
         console.log('[Server] Updating hero with payload:', JSON.stringify(payload, null, 2));
 
@@ -2522,11 +2526,12 @@ app.get('/api/hero', async (req, res) => {
                 textDecoration: 'none',
                 color: '#0f172a',
                 images: ['image.png'],
+                mobileImages: [],
                 showContainer: true,
                 showButton: true,
-                showBrandTag: true,
-                showTitle: true,
-                showSubtitle: true
+                showBrandTagDevice: 'both',
+                showTitleDevice: 'both',
+                showSubtitleDevice: 'both'
             });
         }
         let hero = await Hero.findOne().sort({ updatedAt: -1 });
@@ -2543,11 +2548,12 @@ app.get('/api/hero', async (req, res) => {
                 textDecoration: 'none',
                 color: '#0f172a',
                 images: ['image.png'],
+                mobileImages: [],
                 showContainer: true,
                 showButton: true,
-                showBrandTag: true,
-                showTitle: true,
-                showSubtitle: true
+                showBrandTagDevice: 'both',
+                showTitleDevice: 'both',
+                showSubtitleDevice: 'both'
             };
         } else {
             hero = convertHeroImages(hero);

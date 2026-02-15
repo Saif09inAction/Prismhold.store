@@ -515,7 +515,14 @@
         let topCategories = [];
         let heroData = null;
         let heroImages = [];
+        let heroMobileImages = [];
         let heroRotationInterval = null;
+
+        function getEffectiveHeroImages() {
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile && heroMobileImages && heroMobileImages.length > 0) return heroMobileImages;
+            return heroImages;
+        }
 
         // Load categories from API
         async function loadCategories() {
@@ -652,6 +659,8 @@
                 heroData = data;
                 const raw = Array.isArray(data.images) ? data.images.map(toDirectImageUrl).filter(Boolean) : [];
                 heroImages = raw.filter(img => !/image\.png$/i.test(img || ''));
+                const rawMobile = Array.isArray(data.mobileImages) ? data.mobileImages.map(toDirectImageUrl).filter(Boolean) : [];
+                heroMobileImages = rawMobile;
                 applyHeroStyles(data);
                 startHeroRotation();
             } catch (error) {
@@ -668,14 +677,16 @@
                     textDecoration: 'none',
                     color: '#0f172a',
                     images: [],
+                    mobileImages: [],
                     showContainer: true,
                     showButton: true,
-                    showBrandTag: true,
-                    showTitle: true,
-                    showSubtitle: true
+                    showBrandTagDevice: 'both',
+                    showTitleDevice: 'both',
+                    showSubtitleDevice: 'both'
                 };
                 heroData = fallback;
-                heroImages = fallback.images;
+                heroImages = fallback.images || [];
+                heroMobileImages = fallback.mobileImages || [];
                 applyHeroStyles(fallback);
                 startHeroRotation();
             }
@@ -692,17 +703,43 @@
 
             if (!heroSection) return;
 
-            // On mobile: hide all overlay content - only show image slideshow + dots
+            // On mobile: use mobile images if set, else PC images; show text elements per device settings
             if (isMobile) {
-                if (containerEl) containerEl.style.display = 'none';
-                if (buttonEl) buttonEl.style.display = 'none';
-                if (brandEl) brandEl.style.display = 'none';
-                if (titleEl) titleEl.style.display = 'none';
-                if (subtitleEl) subtitleEl.style.display = 'none';
-                if (heroImages && heroImages.length > 0) {
-                    heroSection.style.backgroundImage = `url('${heroImages[heroCurrentIdx]}')`;
+                const effectiveImages = getEffectiveHeroImages();
+                if (effectiveImages && effectiveImages.length > 0) {
+                    heroSection.style.backgroundImage = `url('${effectiveImages[heroCurrentIdx % effectiveImages.length]}')`;
                     heroSection.style.backgroundSize = 'cover';
                     heroSection.style.backgroundPosition = 'center 40%';
+                }
+                const showBrand = (data.showBrandTagDevice || 'both') === 'mobile' || (data.showBrandTagDevice || 'both') === 'both';
+                const showTitle = (data.showTitleDevice || 'both') === 'mobile' || (data.showTitleDevice || 'both') === 'both';
+                const showSubtitle = (data.showSubtitleDevice || 'both') === 'mobile' || (data.showSubtitleDevice || 'both') === 'both';
+                const showButton = data.hasOwnProperty('showButton') ? data.showButton : true;
+                const showContainer = data.hasOwnProperty('showContainer') ? data.showContainer : true;
+                const anyContent = showBrand || showTitle || showSubtitle || showButton;
+                if (containerEl) containerEl.style.display = anyContent ? 'block' : 'none';
+                if (buttonEl) buttonEl.style.display = (anyContent && showButton) ? 'block' : 'none';
+                if (brandEl) brandEl.style.display = showBrand ? 'block' : 'none';
+                if (titleEl) titleEl.style.display = showTitle ? 'block' : 'none';
+                if (subtitleEl) subtitleEl.style.display = showSubtitle ? 'block' : 'none';
+                if (anyContent && containerEl) {
+                    containerEl.style.background = showContainer ? 'rgba(255,255,255,0.9)' : 'transparent';
+                    containerEl.style.backdropFilter = showContainer ? 'blur(12px)' : 'none';
+                }
+                if (titleEl) {
+                    titleEl.textContent = data.title || 'The Art of Accessory.';
+                    const ts = data.titleFontSize !== undefined ? data.titleFontSize : (data.fontSize || 48);
+                    titleEl.style.fontSize = `${ts}px`;
+                    titleEl.style.color = data.color || '#0f172a';
+                }
+                if (subtitleEl) {
+                    subtitleEl.textContent = data.subtitle || 'HOLD Luxury in your HAND.';
+                    subtitleEl.style.fontSize = `${data.subtitleFontSize || 20}px`;
+                    subtitleEl.style.color = data.color || '#0f172a';
+                }
+                if (brandEl) {
+                    brandEl.textContent = data.brandTag || 'PRISM HOLD';
+                    brandEl.style.color = data.color || '#0f172a';
                 }
                 renderHeroDots();
                 return;
@@ -734,8 +771,11 @@
             }
             if (brandEl) brandEl.style.color = data.color || '#0f172a';
 
-            // Show/hide elements based on visibility settings
-            // Check if value exists and is explicitly false, otherwise show (default true)
+            // Show/hide brand/title/subtitle based on device (PC: show when 'pc' or 'both')
+            const showBrandTag = (data.showBrandTagDevice || 'both') === 'pc' || (data.showBrandTagDevice || 'both') === 'both';
+            const showTitle = (data.showTitleDevice || 'both') === 'pc' || (data.showTitleDevice || 'both') === 'both';
+            const showSubtitle = (data.showSubtitleDevice || 'both') === 'pc' || (data.showSubtitleDevice || 'both') === 'both';
+
             const contentEl = document.getElementById('hero-content');
             if (containerEl && contentEl) {
                 const showContainer = data.hasOwnProperty('showContainer') ? data.showContainer : true;
@@ -770,25 +810,14 @@
                 buttonEl.style.display = showButton ? 'block' : 'none';
                 console.log('[Hero] Button visibility:', showButton, 'showButton value:', data.showButton);
             }
-            if (brandEl) {
-                const showBrandTag = data.hasOwnProperty('showBrandTag') ? data.showBrandTag : true;
-                brandEl.style.display = showBrandTag ? 'block' : 'none';
-                console.log('[Hero] Brand tag visibility:', showBrandTag, 'showBrandTag value:', data.showBrandTag);
-            }
-            if (titleEl) {
-                const showTitle = data.hasOwnProperty('showTitle') ? data.showTitle : true;
-                titleEl.style.display = showTitle ? 'block' : 'none';
-                console.log('[Hero] Title visibility:', showTitle, 'showTitle value:', data.showTitle);
-            }
-            if (subtitleEl) {
-                const showSubtitle = data.hasOwnProperty('showSubtitle') ? data.showSubtitle : true;
-                subtitleEl.style.display = showSubtitle ? 'block' : 'none';
-                console.log('[Hero] Subtitle visibility:', showSubtitle, 'showSubtitle value:', data.showSubtitle);
-            }
+            if (brandEl) brandEl.style.display = showBrandTag ? 'block' : 'none';
+            if (titleEl) titleEl.style.display = showTitle ? 'block' : 'none';
+            if (subtitleEl) subtitleEl.style.display = showSubtitle ? 'block' : 'none';
 
-            // Set background only if we have images from API (no image.png fallback to avoid flash)
-            if (heroImages && heroImages.length > 0) {
-                heroSection.style.backgroundImage = `url('${heroImages[0]}')`;
+            // Set background from effective images (PC uses heroImages)
+            const effectiveImages = getEffectiveHeroImages();
+            if (effectiveImages && effectiveImages.length > 0) {
+                heroSection.style.backgroundImage = `url('${effectiveImages[heroCurrentIdx % effectiveImages.length]}')`;
                 heroSection.style.backgroundSize = 'cover';
                 heroSection.style.backgroundPosition = window.innerWidth <= 768 ? 'center 40%' : 'center center';
             } else {
@@ -801,16 +830,19 @@
         let heroCurrentIdx = 0;
         function renderHeroDots() {
             const dotsEl = document.getElementById('hero-dots');
-            if (!dotsEl || !heroImages || heroImages.length < 2) { dotsEl.innerHTML = ''; return; }
-            dotsEl.innerHTML = heroImages.map((_, i) =>
-                `<button type="button" aria-label="Go to slide ${i + 1}" class="hero-dot w-2.5 h-2.5 rounded-full border-2 border-white/80 transition-all duration-300 ${i === heroCurrentIdx ? 'bg-white scale-110' : 'bg-transparent hover:bg-white/50'}" data-idx="${i}"></button>`
+            const effective = getEffectiveHeroImages();
+            if (!dotsEl || !effective || effective.length < 2) { dotsEl.innerHTML = ''; return; }
+            heroCurrentIdx = Math.min(heroCurrentIdx, effective.length - 1);
+            dotsEl.innerHTML = effective.map((_, i) =>
+                `<button type="button" aria-label="Go to slide ${i + 1}" class="hero-dot w-2.5 h-2.5 rounded-full border-2 border-white/80 transition-all duration-300 cursor-pointer ${i === heroCurrentIdx ? 'bg-white scale-110' : 'bg-transparent hover:bg-white/50'}" data-idx="${i}"></button>`
             ).join('');
             dotsEl.querySelectorAll('.hero-dot').forEach(btn => {
                 btn.onclick = () => {
                     heroCurrentIdx = parseInt(btn.dataset.idx, 10);
                     const heroSection = document.getElementById('home');
-                    if (heroSection && heroImages[heroCurrentIdx]) {
-                        heroSection.style.backgroundImage = `url('${heroImages[heroCurrentIdx]}')`;
+                    const effective = getEffectiveHeroImages();
+                    if (heroSection && effective && effective[heroCurrentIdx]) {
+                        heroSection.style.backgroundImage = `url('${effective[heroCurrentIdx]}')`;
                         renderHeroDots();
                     }
                 };
@@ -820,12 +852,13 @@
         function startHeroRotation() {
             const heroSection = document.getElementById('home');
             if (!heroSection) return;
-            if (!heroImages || heroImages.length < 2) return;
+            const effective = getEffectiveHeroImages();
+            if (!effective || effective.length < 2) return;
             if (heroRotationInterval) clearInterval(heroRotationInterval);
             heroCurrentIdx = 0;
             heroRotationInterval = setInterval(() => {
-                heroCurrentIdx = (heroCurrentIdx + 1) % heroImages.length;
-                heroSection.style.backgroundImage = `url('${heroImages[heroCurrentIdx]}')`;
+                heroCurrentIdx = (heroCurrentIdx + 1) % effective.length;
+                heroSection.style.backgroundImage = `url('${effective[heroCurrentIdx]}')`;
                 heroSection.style.backgroundPosition = window.innerWidth <= 768 ? 'center 40%' : 'center center';
                 renderHeroDots();
             }, 5000);
@@ -1097,7 +1130,7 @@
         <section id="home" class="hero-bg h-[550px] md:h-[700px] flex items-center justify-center text-center px-4 relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-transparent"></div>
             <!-- Hero slideshow dots (visible when 2+ images) -->
-            <div id="hero-dots" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 pointer-events-none md:pointer-events-auto"></div>
+            <div id="hero-dots" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2"></div>
             <!-- Container (PC only; hidden on mobile - mobile shows only image slideshow) -->
             <div id="hero-container" class="p-8 md:p-12 bg-white/90 backdrop-blur-xl max-w-3xl mx-auto shadow-2xl rounded-3xl relative z-10 animate-fade-in-up border border-white/20">
                 <!-- Content that can be shown with or without container -->
