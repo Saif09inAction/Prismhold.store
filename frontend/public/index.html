@@ -398,6 +398,8 @@
           "alternateName": "Prism Hold",
           "url": "https://prismhold.store",
           "logo": "https://prismhold.store/logo.png",
+          "email": "prismholdd@gmail.com",
+          "telephone": "+91-7257857609",
           "description": "Prismhold - Luxury accessories curated for the modern lifestyle. Hold elegance in your hand."
         },
         {
@@ -686,10 +688,27 @@
             const brandEl = document.getElementById('hero-brand');
             const containerEl = document.getElementById('hero-container');
             const buttonEl = document.getElementById('hero-discover-button');
+            const isMobile = window.innerWidth <= 768;
 
             if (!heroSection) return;
 
-            // Update text content
+            // On mobile: hide all overlay content - only show image slideshow + dots
+            if (isMobile) {
+                if (containerEl) containerEl.style.display = 'none';
+                if (buttonEl) buttonEl.style.display = 'none';
+                if (brandEl) brandEl.style.display = 'none';
+                if (titleEl) titleEl.style.display = 'none';
+                if (subtitleEl) subtitleEl.style.display = 'none';
+                if (heroImages && heroImages.length > 0) {
+                    heroSection.style.backgroundImage = `url('${heroImages[heroCurrentIdx]}')`;
+                    heroSection.style.backgroundSize = 'cover';
+                    heroSection.style.backgroundPosition = 'center 40%';
+                }
+                renderHeroDots();
+                return;
+            }
+
+            // PC: apply visibility controls from admin settings
             if (titleEl) titleEl.textContent = data.title || 'The Art of Accessory.';
             if (subtitleEl) subtitleEl.textContent = data.subtitle || 'HOLD Luxury in your HAND. Curated collections.';
             if (brandEl) brandEl.textContent = data.brandTag || 'PRISM HOLD';
@@ -776,6 +795,26 @@
                 heroSection.style.backgroundImage = 'none';
                 heroSection.style.background = 'linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%)';
             }
+            renderHeroDots();
+        }
+
+        let heroCurrentIdx = 0;
+        function renderHeroDots() {
+            const dotsEl = document.getElementById('hero-dots');
+            if (!dotsEl || !heroImages || heroImages.length < 2) { dotsEl.innerHTML = ''; return; }
+            dotsEl.innerHTML = heroImages.map((_, i) =>
+                `<button type="button" aria-label="Go to slide ${i + 1}" class="hero-dot w-2.5 h-2.5 rounded-full border-2 border-white/80 transition-all duration-300 ${i === heroCurrentIdx ? 'bg-white scale-110' : 'bg-transparent hover:bg-white/50'}" data-idx="${i}"></button>`
+            ).join('');
+            dotsEl.querySelectorAll('.hero-dot').forEach(btn => {
+                btn.onclick = () => {
+                    heroCurrentIdx = parseInt(btn.dataset.idx, 10);
+                    const heroSection = document.getElementById('home');
+                    if (heroSection && heroImages[heroCurrentIdx]) {
+                        heroSection.style.backgroundImage = `url('${heroImages[heroCurrentIdx]}')`;
+                        renderHeroDots();
+                    }
+                };
+            });
         }
 
         function startHeroRotation() {
@@ -783,11 +822,12 @@
             if (!heroSection) return;
             if (!heroImages || heroImages.length < 2) return;
             if (heroRotationInterval) clearInterval(heroRotationInterval);
-            let idx = 0;
+            heroCurrentIdx = 0;
             heroRotationInterval = setInterval(() => {
-                idx = (idx + 1) % heroImages.length;
-                heroSection.style.backgroundImage = `url('${heroImages[idx]}')`;
+                heroCurrentIdx = (heroCurrentIdx + 1) % heroImages.length;
+                heroSection.style.backgroundImage = `url('${heroImages[heroCurrentIdx]}')`;
                 heroSection.style.backgroundPosition = window.innerWidth <= 768 ? 'center 40%' : 'center center';
+                renderHeroDots();
             }, 5000);
         }
 
@@ -978,6 +1018,7 @@
         
         // Initialize on load
         window.initApp();
+        window.addEventListener('resize', () => { if (heroData) { applyHeroStyles(heroData); stopHeroRotation(); startHeroRotation(); } });
     </script>
 
     <!-- Main Navigation Bar -->
@@ -1053,9 +1094,11 @@
 
     <!-- Main Content -->
     <main class="min-h-screen pb-24">
-        <section id="home" class="hero-bg h-[400px] md:h-[700px] flex items-center justify-center text-center px-4 relative overflow-hidden">
+        <section id="home" class="hero-bg h-[550px] md:h-[700px] flex items-center justify-center text-center px-4 relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-transparent"></div>
-            <!-- Container (can be hidden, but content stays visible) -->
+            <!-- Hero slideshow dots (visible when 2+ images) -->
+            <div id="hero-dots" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 pointer-events-none md:pointer-events-auto"></div>
+            <!-- Container (PC only; hidden on mobile - mobile shows only image slideshow) -->
             <div id="hero-container" class="p-8 md:p-12 bg-white/90 backdrop-blur-xl max-w-3xl mx-auto shadow-2xl rounded-3xl relative z-10 animate-fade-in-up border border-white/20">
                 <!-- Content that can be shown with or without container -->
                 <div id="hero-content" class="relative z-10">
@@ -1168,8 +1211,8 @@
                         </button>
                     </div>
                     <div class="text-sm text-gray-300">
-                        <p class="mb-1">Email: support@prismhold.com</p>
-                        <p>Phone: +1 (555) 123-4567</p>
+                        <p class="mb-1"><a href="mailto:prismholdd@gmail.com" class="hover:text-accent transition-colors">prismholdd@gmail.com</a></p>
+                        <p><a href="tel:+917257857609" class="hover:text-accent transition-colors">+91 72578 57609</a></p>
                     </div>
                 </div>
             </div>
@@ -1666,7 +1709,7 @@
         }
         let products = []; // Initialize products array to prevent undefined errors
         let storeSettings = { freeDeliveryQuantity: 0, deliveryChargesAmount: 0 };
-        const businessPhone = "917257857609"; 
+        const businessPhone = "917257857609"; // +91 72578 57609 
         const formatCurrency = (amount) => `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0, minimumFractionDigits: 0 })}`;
 
         function alertMessage(message, type = 'info') {
