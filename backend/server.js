@@ -394,6 +394,12 @@ async function ensureUsersIndexesSparse() {
                 }
             }
         }
+        // Explicitly ensure sparse unique index on email (multiple phone-only users can have email: null)
+        try {
+            await coll.createIndex({ email: 1 }, { unique: true, sparse: true, name: 'email_1' });
+        } catch (idxErr) {
+            if (!(idxErr.message || '').includes('already exists')) console.warn('createIndex email_1:', idxErr.message);
+        }
         await User.syncIndexes();
     } catch (e) {
         console.warn('ensureUsersIndexesSparse:', e.message);

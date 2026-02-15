@@ -2102,6 +2102,7 @@
             return Array.from(byId.values());
         }
         window.initUserDataListeners = async function(uid) {
+            if (!getAuthToken()) return; // Skip API calls when not logged in
             const guestCart = [...cartItems];
             if (mockDB.carts[uid] && guestCart.length === 0) { 
                 cartItems = mockDB.carts[uid]; 
@@ -2144,7 +2145,7 @@
             
             // Set up polling for real-time updates (simulating onSnapshot)
             window.userDataPollInterval = setInterval(async () => {
-                if (window.currentUser) {
+                if (window.currentUser && getAuthToken()) {
                     try {
                         const cartData = await apiRequest('/cart');
                         const newItems = cartData.items || [];
