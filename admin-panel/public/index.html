@@ -265,39 +265,42 @@
                                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                         <div>
                                             <label class="text-sm font-medium text-gray-700">Show Brand Tag</label>
-                                            <p class="text-xs text-gray-500">Toggle the "PRISM HOLD" brand tag</p>
+                                            <p class="text-xs text-gray-500">Where to display the brand tag</p>
                                         </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="hero-show-brand" class="sr-only peer" checked>
-                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                        </label>
+                                        <select id="hero-show-brand-device" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                            <option value="both">Both (Mobile & PC)</option>
+                                            <option value="mobile">Mobile only</option>
+                                            <option value="pc">PC only</option>
+                                        </select>
                                     </div>
                                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                         <div>
                                             <label class="text-sm font-medium text-gray-700">Show Title</label>
-                                            <p class="text-xs text-gray-500">Toggle the main title text</p>
+                                            <p class="text-xs text-gray-500">Where to display the main title</p>
                                         </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="hero-show-title" class="sr-only peer" checked>
-                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                        </label>
+                                        <select id="hero-show-title-device" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                            <option value="both">Both (Mobile & PC)</option>
+                                            <option value="mobile">Mobile only</option>
+                                            <option value="pc">PC only</option>
+                                        </select>
                                     </div>
                                     <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                         <div>
                                             <label class="text-sm font-medium text-gray-700">Show Subtitle</label>
-                                            <p class="text-xs text-gray-500">Toggle the subtitle text</p>
+                                            <p class="text-xs text-gray-500">Where to display the subtitle</p>
                                         </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="hero-show-subtitle" class="sr-only peer" checked>
-                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                        </label>
+                                        <select id="hero-show-subtitle-device" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                            <option value="both">Both (Mobile & PC)</option>
+                                            <option value="mobile">Mobile only</option>
+                                            <option value="pc">PC only</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="border-t border-gray-200 pt-4">
-                            <h3 class="text-lg font-semibold text-gray-900 mb-3">Hero Images (slides)</h3>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-3">Hero Images (PC / Desktop slides)</h3>
                             <div class="space-y-3">
                                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:space-x-2">
                                     <input type="file" id="hero-image-file" accept="image/*" class="hidden" onchange="handleHeroImageFileSelect(event)">
@@ -306,9 +309,21 @@
                                     <input type="text" id="hero-image-url-input" placeholder="Add Image URL" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
                                     <button type="button" onclick="addHeroImageFromUrl()" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm whitespace-nowrap">Add URL</button>
                                 </div>
-                                <div id="hero-images-list" class="space-y-2">
-                                    <!-- Images will be listed here -->
+                                <div id="hero-images-list" class="space-y-2"></div>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-200 pt-4 mt-4">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-1">Mobile Hero Images</h3>
+                            <p class="text-sm text-gray-500 mb-3">These images show only on mobile devices. If empty, PC images are used on mobile.</p>
+                            <div class="space-y-3">
+                                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:space-x-2">
+                                    <input type="file" id="hero-mobile-image-file" accept="image/*" class="hidden" onchange="handleHeroMobileImageFileSelect(event)">
+                                    <button type="button" onclick="document.getElementById('hero-mobile-image-file').click()" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm whitespace-nowrap">Upload Image</button>
+                                    <span class="text-sm text-gray-500 hidden sm:inline">or</span>
+                                    <input type="text" id="hero-mobile-image-url-input" placeholder="Add Image URL" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg">
+                                    <button type="button" onclick="addHeroMobileImageFromUrl()" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm whitespace-nowrap">Add URL</button>
                                 </div>
+                                <div id="hero-mobile-images-list" class="space-y-2"></div>
                             </div>
                         </div>
                     </div>
@@ -1012,6 +1027,7 @@
         const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB max; backend compresses to ~300-400KB (URLs have no limit)
         let productImages = [];
         let heroImages = [];
+        let heroMobileImages = [];
         let heroData = {};
         
         // Helper: convert Google Drive/Photos share links to direct image URLs (share links return HTML, not images)
@@ -1145,6 +1161,48 @@
         function removeHeroImage(index) {
             heroImages.splice(index, 1);
             renderHeroImages();
+        }
+
+        // Mobile hero images management
+        function renderHeroMobileImages() {
+            const container = document.getElementById('hero-mobile-images-list');
+            if (!container) return;
+            container.innerHTML = heroMobileImages.length ? heroMobileImages.map((imageIdOrUrl, idx) => {
+                const displayUrl = getImageUrl(imageIdOrUrl);
+                return `
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-3 p-2 sm:p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <img src="${displayUrl}" alt="Mobile Hero ${idx + 1}" class="w-16 h-16 object-cover rounded border border-gray-200 flex-shrink-0" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'64\' height=\'64\'%3E%3Crect fill=\'%23ddd\' width=\'64\' height=\'64\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\' font-size=\'10\'%3EImage%3C/text%3E%3C/svg%3E'">
+                    <div class="flex-1 min-w-0 w-full sm:w-auto"><p class="text-xs text-gray-600 truncate">${imageIdOrUrl}</p></div>
+                    <button type="button" onclick="removeHeroMobileImage(${idx})" class="w-full sm:w-auto px-3 py-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200 transition text-sm font-medium whitespace-nowrap flex-shrink-0">Remove</button>
+                </div>
+            `;
+            }).join('') : '<p class="text-sm text-gray-500">No mobile hero images. PC images will be used on mobile.</p>';
+        }
+        function addHeroMobileImageFromUrl() {
+            const input = document.getElementById('hero-mobile-image-url-input');
+            const url = input?.value.trim();
+            if (url) { heroMobileImages.push(url); renderHeroMobileImages(); input.value = ''; }
+        }
+        async function handleHeroMobileImageFileSelect(event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+            for (const file of files) {
+                if (file.size > MAX_UPLOAD_SIZE) { alert(`"${file.name}" exceeds 5MB.`); continue; }
+                const formData = new FormData();
+                formData.append('image', file);
+                try {
+                    const response = await fetch(`${API_BASE_URL}/admin/upload`, { method: 'POST', headers: { 'Authorization': `Bearer ${adminToken}` }, body: formData });
+                    if (!response.ok) throw new Error('Upload failed');
+                    const data = await response.json();
+                    heroMobileImages.push(data.id || data.url);
+                    renderHeroMobileImages();
+                } catch (error) { alert('Failed to upload: ' + error.message); }
+            }
+            event.target.value = '';
+        }
+        function removeHeroMobileImage(index) {
+            heroMobileImages.splice(index, 1);
+            renderHeroMobileImages();
         }
         
         async function handleMultipleImageFileSelect(event) {
@@ -1607,18 +1665,14 @@
                 const heroObj = hero && typeof hero === 'object' ? hero : {};
                 document.getElementById('hero-show-container').checked = heroObj.hasOwnProperty('showContainer') ? heroObj.showContainer : true;
                 document.getElementById('hero-show-button').checked = heroObj.hasOwnProperty('showButton') ? heroObj.showButton : true;
-                document.getElementById('hero-show-brand').checked = heroObj.hasOwnProperty('showBrandTag') ? heroObj.showBrandTag : true;
-                document.getElementById('hero-show-title').checked = heroObj.hasOwnProperty('showTitle') ? heroObj.showTitle : true;
-                document.getElementById('hero-show-subtitle').checked = heroObj.hasOwnProperty('showSubtitle') ? heroObj.showSubtitle : true;
-                console.log('[Admin] Loaded hero visibility settings:', {
-                    showContainer: heroObj.showContainer,
-                    showButton: heroObj.showButton,
-                    showBrandTag: heroObj.showBrandTag,
-                    showTitle: heroObj.showTitle,
-                    showSubtitle: heroObj.showSubtitle
-                });
+                const setDevice = (elId, val) => { const el = document.getElementById(elId); if (el && val) el.value = val; };
+                setDevice('hero-show-brand-device', heroObj.showBrandTagDevice || 'both');
+                setDevice('hero-show-title-device', heroObj.showTitleDevice || 'both');
+                setDevice('hero-show-subtitle-device', heroObj.showSubtitleDevice || 'both');
                 heroImages = Array.isArray(hero?.images) && hero.images.length ? hero.images : ['image.png'];
+                heroMobileImages = Array.isArray(hero?.mobileImages) ? hero.mobileImages : [];
                 renderHeroImages();
+                renderHeroMobileImages();
             } catch (error) {
                 console.error('Failed to load hero content:', error);
                 alert('Failed to load hero content');
@@ -1629,86 +1683,41 @@
             try {
                 const showContainer = document.getElementById('hero-show-container').checked;
                 const showButton = document.getElementById('hero-show-button').checked;
-                const showBrandTag = document.getElementById('hero-show-brand').checked;
-                const showTitle = document.getElementById('hero-show-title').checked;
-                const showSubtitle = document.getElementById('hero-show-subtitle').checked;
-                
-                console.log('[Admin] Saving hero with visibility:', {
-                    showContainer,
-                    showButton,
-                    showBrandTag,
-                    showTitle,
-                    showSubtitle
-                });
+                const showBrandTagDevice = document.getElementById('hero-show-brand-device')?.value || 'both';
+                const showTitleDevice = document.getElementById('hero-show-title-device')?.value || 'both';
+                const showSubtitleDevice = document.getElementById('hero-show-subtitle-device')?.value || 'both';
                 
                 const payload = {
                     brandTag: document.getElementById('hero-brand-input').value,
                     title: document.getElementById('hero-title-input').value,
                     subtitle: document.getElementById('hero-subtitle-input').value,
                     textAlign: document.getElementById('hero-align').value,
-                    fontSize: parseInt(document.getElementById('hero-title-font-size').value) || 48, // Keep for backward compatibility
+                    fontSize: parseInt(document.getElementById('hero-title-font-size').value) || 48,
                     titleFontSize: parseInt(document.getElementById('hero-title-font-size').value) || 48,
                     subtitleFontSize: parseInt(document.getElementById('hero-subtitle-font-size').value) || 20,
                     fontWeight: document.getElementById('hero-weight').value,
                     textDecoration: document.getElementById('hero-decoration').value,
                     color: document.getElementById('hero-color').value || '#0f172a',
                     images: heroImages.filter(Boolean),
-                    showContainer: showContainer,
-                    showButton: showButton,
-                    showBrandTag: showBrandTag,
-                    showTitle: showTitle,
-                    showSubtitle: showSubtitle
+                    mobileImages: heroMobileImages.filter(Boolean),
+                    showContainer,
+                    showButton,
+                    showBrandTagDevice,
+                    showTitleDevice,
+                    showSubtitleDevice
                 };
                 
                 const response = await apiRequest('/admin/hero', { method: 'PUT', body: JSON.stringify(payload) });
-                console.log('[Admin] Hero saved, full response:', response);
                 
-                // Update checkboxes directly from the response instead of reloading
-                // This prevents checkboxes from resetting
                 if (response) {
-                    // Get current checkbox states before updating (for debugging)
-                    const beforeStates = {
-                        container: document.getElementById('hero-show-container').checked,
-                        button: document.getElementById('hero-show-button').checked,
-                        brand: document.getElementById('hero-show-brand').checked,
-                        title: document.getElementById('hero-show-title').checked,
-                        subtitle: document.getElementById('hero-show-subtitle').checked
-                    };
-                    
-                    // Update checkboxes from server response
                     const containerEl = document.getElementById('hero-show-container');
                     const buttonEl = document.getElementById('hero-show-button');
-                    const brandEl = document.getElementById('hero-show-brand');
-                    const titleEl = document.getElementById('hero-show-title');
-                    const subtitleEl = document.getElementById('hero-show-subtitle');
-                    
-                    if (containerEl) {
-                        const newValue = response.hasOwnProperty('showContainer') ? Boolean(response.showContainer) : true;
-                        containerEl.checked = newValue;
-                        console.log('[Admin] Container checkbox:', beforeStates.container, '->', newValue, '(from response:', response.showContainer, ')');
-                    }
-                    if (buttonEl) {
-                        const newValue = response.hasOwnProperty('showButton') ? Boolean(response.showButton) : true;
-                        buttonEl.checked = newValue;
-                        console.log('[Admin] Button checkbox:', beforeStates.button, '->', newValue, '(from response:', response.showButton, ')');
-                    }
-                    if (brandEl) {
-                        const newValue = response.hasOwnProperty('showBrandTag') ? Boolean(response.showBrandTag) : true;
-                        brandEl.checked = newValue;
-                        console.log('[Admin] Brand checkbox:', beforeStates.brand, '->', newValue, '(from response:', response.showBrandTag, ')');
-                    }
-                    if (titleEl) {
-                        const newValue = response.hasOwnProperty('showTitle') ? Boolean(response.showTitle) : true;
-                        titleEl.checked = newValue;
-                        console.log('[Admin] Title checkbox:', beforeStates.title, '->', newValue, '(from response:', response.showTitle, ')');
-                    }
-                    if (subtitleEl) {
-                        const newValue = response.hasOwnProperty('showSubtitle') ? Boolean(response.showSubtitle) : true;
-                        subtitleEl.checked = newValue;
-                        console.log('[Admin] Subtitle checkbox:', beforeStates.subtitle, '->', newValue, '(from response:', response.showSubtitle, ')');
-                    }
-                } else {
-                    console.error('[Admin] No response received from server');
+                    if (containerEl) containerEl.checked = response.hasOwnProperty('showContainer') ? Boolean(response.showContainer) : true;
+                    if (buttonEl) buttonEl.checked = response.hasOwnProperty('showButton') ? Boolean(response.showButton) : true;
+                    const setDevice = (elId, val) => { const el = document.getElementById(elId); if (el && val) el.value = val; };
+                    setDevice('hero-show-brand-device', response.showBrandTagDevice || 'both');
+                    setDevice('hero-show-title-device', response.showTitleDevice || 'both');
+                    setDevice('hero-show-subtitle-device', response.showSubtitleDevice || 'both');
                 }
                 
                 alert('Hero updated successfully');
