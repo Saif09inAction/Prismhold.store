@@ -1514,17 +1514,19 @@
                     <button type="button" onclick="setAuthTab('phone')" id="auth-tab-phone" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-600 transition-all duration-300 flex items-center justify-center gap-2">
                         <i data-lucide="smartphone" class="w-4 h-4"></i> Phone
                     </button>
-                    <button type="button" onclick="setAuthTab('google')" id="auth-tab-google" class="flex-1 py-2.5 text-sm font-semibold rounded-lg text-gray-600 transition-all duration-300 flex items-center justify-center gap-2">
-                        <i data-lucide="chrome" class="w-4 h-4"></i> Google
-                    </button>
                 </div>
-                <!-- Email OTP -->
+                <!-- Email: OTP or Google -->
                 <div id="auth-panel-email" class="auth-panel">
                     <div id="email-step-1">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Email address</label>
                         <input type="email" id="auth-email-input" placeholder="you@example.com" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-base">
-                        <button type="button" onclick="sendEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                        <button type="button" onclick="sendEmailOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mb-4">
                             <i data-lucide="send" class="w-4 h-4"></i> Send OTP
+                        </button>
+                        <p class="text-xs text-gray-400 text-center mb-3">— or —</p>
+                        <button type="button" onclick="handleGoogleLogin()" class="w-full py-3.5 px-4 border-2 border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.98]">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                            Continue with Google
                         </button>
                     </div>
                     <div id="email-step-2" class="hidden">
@@ -1541,16 +1543,32 @@
                 <div id="auth-panel-phone" class="auth-panel hidden">
                     <div id="recaptcha-phone-wrapper"></div>
                     <div id="phone-step-1">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Phone number (10 digits)</label>
-                        <input type="tel" id="auth-phone-input" placeholder="9876543210" maxlength="15" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-base" inputmode="numeric" pattern="[0-9]*">
-                        <button type="button" onclick="sendPhoneOtp()" id="send-phone-otp-btn" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2">
+                        <label id="phone-input-label" class="block text-xs font-bold text-gray-500 uppercase mb-2 tracking-wider">Enter mobile number</label>
+                        <div class="flex rounded-xl overflow-hidden border-2 border-gray-200 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 transition-all duration-300 mb-1" id="phone-input-wrapper">
+                            <div class="flex-shrink-0 px-4 py-3.5 bg-gray-100 text-gray-600 font-medium text-base border-r border-gray-200">+91</div>
+                            <div class="relative flex-1 min-w-0">
+                                <input type="tel" id="auth-phone-input" placeholder="Enter 10 digit number" maxlength="10" class="w-full px-4 py-3.5 pr-10 text-base outline-none bg-transparent" inputmode="numeric" pattern="[0-9]*" oninput="validatePhoneInput()">
+                                <button type="button" onclick="clearPhoneInput()" id="phone-clear-btn" class="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition hidden" aria-label="Clear">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="phone-input-error" class="text-sm text-red-500 hidden mt-1 mb-2">Please enter a valid mobile number</p>
+                        <button type="button" onclick="sendPhoneOtp()" id="send-phone-otp-btn" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mt-2">
                             <i data-lucide="message-circle" class="w-4 h-4"></i> Send OTP
                         </button>
                     </div>
                     <div id="phone-step-2" class="hidden">
-                        <p class="text-sm text-gray-500 mb-3">Enter the 6-digit code we sent</p>
-                        <input type="text" id="auth-phone-otp" placeholder="000000" maxlength="6" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-center text-xl tracking-[0.5em] font-semibold">
-                        <button type="button" onclick="verifyPhoneOtp()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mb-2">
+                        <p id="phone-otp-sent-to" class="text-sm text-gray-500 mb-4">Enter OTP sent to</p>
+                        <div class="flex justify-center gap-2 mb-6" id="phone-otp-boxes">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="phone-otp-digit w-12 h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" data-idx="0">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="phone-otp-digit w-12 h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" data-idx="1">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="phone-otp-digit w-12 h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" data-idx="2">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="phone-otp-digit w-12 h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" data-idx="3">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="phone-otp-digit w-12 h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" data-idx="4">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="phone-otp-digit w-12 h-14 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all" data-idx="5">
+                        </div>
+                        <button type="button" onclick="verifyPhoneOtp()" id="verify-phone-otp-btn" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mb-2">
                             <i data-lucide="check" class="w-4 h-4"></i> Verify & Continue
                         </button>
                         <button type="button" onclick="resendPhoneOtp()" id="resend-phone-otp-btn" class="w-full py-2 text-sm text-gray-500 hover:text-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Resend OTP</button>
@@ -1563,13 +1581,6 @@
                     <input type="text" id="auth-newuser-name" placeholder="Your name" class="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-300 outline-none mb-4 text-base">
                     <button type="button" onclick="submitNewUserName()" class="w-full luxury-button font-bold py-3.5 rounded-xl flex items-center justify-center gap-2">
                         <i data-lucide="check" class="w-4 h-4"></i> Continue
-                    </button>
-                </div>
-                <!-- Google -->
-                <div id="auth-panel-google" class="auth-panel hidden">
-                    <button type="button" onclick="handleGoogleLogin()" class="w-full py-3.5 px-4 border-2 border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 flex items-center justify-center gap-3 transition-all duration-300 active:scale-[0.98]">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                        Continue with Google
                     </button>
                 </div>
             </div>
@@ -1841,6 +1852,7 @@
             document.querySelectorAll('.auth-panel').forEach(p => p.classList.add('hidden'));
             const panel = document.getElementById('auth-panel-' + tab);
             if (panel) panel.classList.remove('hidden');
+            if (tab === 'phone') validatePhoneInput();
             lucide.createIcons();
         }
         async function sendEmailOtp() {
@@ -1932,11 +1944,38 @@
                 alertMessage(e.message || 'Failed to save name', 'error');
             }
         }
+        function validatePhoneInput() {
+            const input = document.getElementById('auth-phone-input');
+            const wrapper = document.getElementById('phone-input-wrapper');
+            const label = document.getElementById('phone-input-label');
+            const errEl = document.getElementById('phone-input-error');
+            const clearBtn = document.getElementById('phone-clear-btn');
+            if (!input) return;
+            let val = (input.value || '').replace(/\D/g, '').slice(0, 10);
+            input.value = val;
+            const isValid = val.length === 10 && /^[6-9]\d{9}$/.test(val);
+            if (wrapper) {
+                wrapper.classList.remove('border-red-500', 'border-gray-200');
+                wrapper.classList.add(isValid ? 'border-gray-200' : (val.length > 0 ? 'border-red-500' : 'border-gray-200'));
+            }
+            if (label) {
+                label.classList.remove('text-red-500', 'text-gray-500');
+                label.classList.add(val.length > 0 && !isValid ? 'text-red-500' : 'text-gray-500');
+            }
+            if (errEl) errEl.classList.toggle('hidden', isValid || val.length === 0);
+            if (clearBtn) clearBtn.classList.toggle('hidden', val.length === 0);
+            lucide.createIcons();
+        }
+        function clearPhoneInput() {
+            const input = document.getElementById('auth-phone-input');
+            if (input) { input.value = ''; input.focus(); validatePhoneInput(); }
+        }
         function resetPhoneOtpStep() {
             document.getElementById('phone-step-1').classList.remove('hidden');
             document.getElementById('phone-step-2').classList.add('hidden');
             document.getElementById('auth-phone-input').value = '';
-            document.getElementById('auth-phone-otp').value = '';
+            validatePhoneInput();
+            clearPhoneOtpBoxes();
             phoneConfirmationResult = null;
             const rb = document.getElementById('resend-phone-otp-btn');
             if (rb) { rb.textContent = 'Resend OTP'; rb.disabled = false; }
@@ -1959,26 +1998,78 @@
             recaptchaVerifier = new firebase.auth.RecaptchaVerifier(div.id, { size: 'invisible', callback: () => {} });
             return recaptchaVerifier;
         }
+        let phoneOtpBoxesInitialized = false;
+        function setupPhoneOtpBoxes() {
+            const boxes = document.querySelectorAll('.phone-otp-digit');
+            boxes.forEach(b => { b.value = ''; });
+            if (phoneOtpBoxesInitialized) { if (boxes[0]) boxes[0].focus(); return; }
+            phoneOtpBoxesInitialized = true;
+            document.getElementById('phone-otp-boxes')?.addEventListener('input', (e) => {
+                const box = e.target;
+                if (!box.classList.contains('phone-otp-digit')) return;
+                const v = (box.value || '').replace(/\D/g, '').slice(0, 1);
+                box.value = v;
+                const idx = parseInt(box.dataset.idx, 10);
+                if (v && idx < 5) boxes[idx + 1]?.focus();
+            });
+            document.getElementById('phone-otp-boxes')?.addEventListener('keydown', (e) => {
+                const box = e.target;
+                if (!box.classList.contains('phone-otp-digit')) return;
+                if (e.key === 'Backspace' && !box.value) {
+                    const idx = parseInt(box.dataset.idx, 10);
+                    if (idx > 0) boxes[idx - 1]?.focus();
+                }
+            });
+            document.getElementById('phone-otp-boxes')?.addEventListener('paste', (e) => {
+                const box = e.target;
+                if (!box.classList.contains('phone-otp-digit')) return;
+                e.preventDefault();
+                const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                pasted.split('').forEach((c, j) => { if (boxes[j]) boxes[j].value = c; });
+                if (pasted.length > 0) boxes[Math.min(pasted.length - 1, 5)]?.focus();
+            });
+            if (boxes[0]) boxes[0].focus();
+        }
+        function getPhoneOtpFromBoxes() {
+            return Array.from(document.querySelectorAll('.phone-otp-digit')).map(b => b.value).join('');
+        }
+        function clearPhoneOtpBoxes() {
+            document.querySelectorAll('.phone-otp-digit').forEach(b => { b.value = ''; });
+        }
         async function sendPhoneOtp() {
             if (!firebaseAuth) { alertMessage('Phone login is not configured. Add Firebase credentials.', 'error'); return; }
+            validatePhoneInput();
             const raw = document.getElementById('auth-phone-input')?.value?.trim() || '';
             const digits = raw.replace(/\D/g, '');
-            if (digits.length < 10) { alertMessage('Enter your 10-digit phone number', 'error'); return; }
+            if (digits.length !== 10 || !/^[6-9]\d{9}$/.test(digits)) {
+                document.getElementById('phone-input-wrapper')?.classList.add('border-red-500');
+                document.getElementById('phone-input-label')?.classList.add('text-red-500');
+                document.getElementById('phone-input-error')?.classList.remove('hidden');
+                return;
+            }
             const phone = normalizePhoneForFirebase(raw);
             const btn = document.getElementById('send-phone-otp-btn');
             btn.disabled = true;
+            document.getElementById('phone-step-1').classList.add('hidden');
+            document.getElementById('phone-step-2').classList.remove('hidden');
+            const sentToEl = document.getElementById('phone-otp-sent-to');
+            if (sentToEl) sentToEl.textContent = 'Enter OTP sent to ' + phone;
+            clearPhoneOtpBoxes();
+            setupPhoneOtpBoxes();
+            const verifyBtn = document.getElementById('verify-phone-otp-btn');
+            if (verifyBtn) { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="animate-pulse">Sending OTP...</span>'; }
             try {
                 const verifier = ensureRecaptchaVerifier();
                 if (!verifier) throw new Error('reCAPTCHA setup failed');
                 phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, verifier);
-                document.getElementById('phone-step-1').classList.add('hidden');
-                document.getElementById('phone-step-2').classList.remove('hidden');
-                document.getElementById('auth-phone-otp').value = '';
                 startResendPhoneCooldown();
-                lucide.createIcons();
+                if (verifyBtn) { verifyBtn.disabled = false; verifyBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Verify & Continue'; lucide.createIcons(); }
             } catch (e) {
+                document.getElementById('phone-step-2').classList.add('hidden');
+                document.getElementById('phone-step-1').classList.remove('hidden');
                 alertMessage(e.message || 'Failed to send OTP', 'error');
                 if (recaptchaVerifier) { try { recaptchaVerifier.clear(); } catch (x) {} recaptchaVerifier = null; }
+                if (verifyBtn) { verifyBtn.disabled = false; verifyBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Verify & Continue'; lucide.createIcons(); }
             }
             btn.disabled = false;
         }
@@ -2006,6 +2097,8 @@
                 const verifier = ensureRecaptchaVerifier();
                 if (!verifier) throw new Error('reCAPTCHA setup failed');
                 phoneConfirmationResult = await firebaseAuth.signInWithPhoneNumber(phone, verifier);
+                clearPhoneOtpBoxes();
+                setupPhoneOtpBoxes();
                 alertMessage('OTP resent! Check your phone.', 'success');
                 startResendPhoneCooldown();
             } catch (e) {
@@ -2015,8 +2108,8 @@
         }
         async function verifyPhoneOtp() {
             if (!phoneConfirmationResult) { alertMessage('Request OTP first', 'error'); return; }
-            const otp = document.getElementById('auth-phone-otp')?.value?.trim();
-            if (!otp) { alertMessage('Enter the OTP from your phone', 'error'); return; }
+            const otp = getPhoneOtpFromBoxes();
+            if (!otp || otp.length !== 6) { alertMessage('Enter the 6-digit OTP from your phone', 'error'); return; }
             try {
                 const cred = await phoneConfirmationResult.confirm(otp);
                 const idToken = await cred.user.getIdToken(true);
