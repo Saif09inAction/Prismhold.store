@@ -1,307 +1,257 @@
-# Prism Hold - MongoDB Migration
+# PRISM HOLD — Luxury Accessories E-Commerce
 
-This project has been migrated from Firebase to MongoDB with a Node.js/Express backend.
+A full-stack e-commerce platform for luxury accessories (clutches, bags, jewelry). Live at [prismhold.store](https://prismhold.store).
 
-## 🚀 Quick Links
+---
 
-- **[Quick Start Guide](./QUICK_START.md)** - Get started in 5 minutes
-- **[Complete Deployment Guide](./DEPLOYMENT.md)** - Step-by-step deployment instructions for beginners
-- **[Deployment Checklist](./DEPLOYMENT_CHECKLIST.md)** - Don't miss any steps!
+## Tech Stack
 
-## 📁 Project Structure
+### Backend
+| Technology | Purpose |
+|------------|--------|
+| **Node.js** | Runtime |
+| **Express.js** | Web framework, REST API |
+| **MongoDB** | Database (products, users, orders) |
+| **Mongoose** | ODM for MongoDB |
+| **JWT** | Authentication (user & admin) |
+| **Razorpay** | Payment gateway |
+| **Firebase Admin** | Phone OTP & Google sign-in |
+| **bcryptjs** | Password hashing |
+| **Multer + Sharp** | Image uploads & compression |
+| **Socket.io** | Real-time updates (optional) |
+
+### Frontend
+| Technology | Purpose |
+|------------|--------|
+| **HTML5** | Structure |
+| **Tailwind CSS** | Styling (utility-first) |
+| **Vanilla JavaScript** | UI logic (no framework) |
+| **Lucide Icons** | Icons via CDN |
+| **Razorpay Checkout** | Payment UI |
+
+### Infrastructure
+- **Frontend**: Vercel (static hosting)
+- **Backend API**: Render (Node.js)
+- **Database**: MongoDB Atlas
+- **Auth**: JWT + Firebase (Email OTP, Phone OTP, Google)
+
+---
+
+## How It Works
+
+### Architecture
+
+```
+[Browser / Customer]
+        │
+        │  HTTPS
+        ▼
+[Vercel] → frontend/public/index.html (static)
+        │
+        │  API calls (fetch)
+        ▼
+[Render] → backend/server.js (Express API)
+        │
+        ├── REST API (/api/*)
+        ├── Auth (JWT, Firebase)
+        ├── Razorpay (payments)
+        └── Data
+               │
+               ▼
+        [MongoDB Atlas]
+```
+
+### Request Flow
+
+1. **Customer visits site** → Vercel serves `frontend/public/index.html`
+2. **Page loads** → JavaScript fetches products, categories, hero content from API
+3. **Auth** → User signs in (Email OTP, Phone OTP, or Google) → Backend returns JWT → Stored in localStorage
+4. **Cart & checkout** → Frontend calls `/api/cart`, `/api/addresses`, `/api/orders` with JWT
+5. **Payment** → Backend creates Razorpay order → Frontend opens Razorpay Checkout → User pays → Backend verifies signature → Order updated
+6. **Admin** → Separate admin UI (`/admin` or `admin-panel/`) → Uses same API with admin JWT
+
+### Authentication
+
+- **Email OTP**: Backend sends 6-digit OTP via Resend/SMTP; user verifies; JWT issued
+- **Phone OTP**: Firebase Auth (reCAPTCHA) sends SMS; backend verifies ID token; JWT issued
+- **Google**: Firebase Auth popup/redirect; backend verifies ID token; JWT issued
+
+### Payment Flow
+
+1. User selects items → Proceeds to checkout
+2. Backend creates Razorpay order (`POST /api/orders`)
+3. Frontend opens Razorpay Checkout modal
+4. User completes payment
+5. Frontend calls `/api/payments/razorpay/verify` with payment details
+6. Backend verifies signature, updates order status
+7. Optional: Razorpay webhook for server-side confirmation
+
+---
+
+## Project Structure
 
 ```
 prismhold/
-├── backend/                 # Backend/server code
-│   ├── server.js           # Main Express server
-│   ├── create-admin.js     # Admin user creation script
-│   ├── uploads/            # Uploaded files storage
-│   └── README.md           # Backend documentation
+├── backend/
+│   ├── server.js              # Main Express app, all API routes
+│   ├── create-admin.js        # Create admin user (npm run create-admin)
+│   ├── fix-email-index.js     # MongoDB index fix for phone-only users
+│   └── uploads/               # Uploaded images (or stored in MongoDB)
 │
-├── frontend/               # Frontend/client code
-│   ├── public/            # Public-facing website
-│   │   ├── index.html     # Main customer website
-│   │   └── image.png      # Default images
-│   ├── admin/             # Admin panel
-│   │   └── admin.html     # Admin dashboard
-│   └── README.md          # Frontend documentation
+├── frontend/
+│   ├── public/
+│   │   ├── index.html         # Customer site (products, cart, checkout)
+│   │   ├── tailwind.css       # Compiled Tailwind CSS
+│   │   ├── config/
+│   │   │   ├── api.js         # API base URL
+│   │   │   └── firebase.js    # Firebase config for auth
+│   │   └── admin/
+│   │       └── index.html     # Admin panel (Vercel)
+│   ├── admin/
+│   │   └── admin.html         # Admin panel source
+│   └── src/
+│       └── input.css          # Tailwind source
 │
-├── .env.example           # Environment variables template
-├── .gitignore            # Git ignore rules
-├── package.json          # Dependencies and scripts
-├── Procfile              # Deployment configuration
-├── README.md             # This file
-├── DEPLOYMENT.md         # Deployment guide
-└── QUICK_START.md        # Quick start guide
+├── admin-panel/               # Standalone admin (optional)
+│   ├── server.js              # Proxies to main backend
+│   └── public/index.html      # Admin UI
+│
+├── package.json
+├── tailwind.config.js
+├── .env.example
+└── README.md
 ```
 
-## Prerequisites
+---
 
-- Node.js (v14 or higher)
-- MongoDB (running on localhost:27017)
+## Getting Started
+
+### Prerequisites
+
+- Node.js 14+
+- MongoDB (local or Atlas)
 - npm or yarn
 
-## Setup Instructions
-
-### 1. Install Dependencies
+### 1. Clone & Install
 
 ```bash
+git clone https://github.com/Saif09inAction/Prismhold.store.git
+cd Prismhold.store
 npm install
 ```
 
-### 2. Start MongoDB
+### 2. Environment Variables
 
-Make sure MongoDB is running on your local machine:
-
-```bash
-# On macOS with Homebrew
-brew services start mongodb-community
-
-# Or run directly
-mongod --dbpath /path/to/your/data/directory
-```
-
-### 3. Configure Environment Variables (Optional)
-
-Create a `.env` file in the root directory:
+Create `.env` in the project root (see `.env.example`):
 
 ```env
-MONGODB_URI=mongodb://localhost:27017/prismhold
+MONGO_URI=mongodb://localhost:27017/prismhold
+# or MongoDB Atlas: mongodb+srv://user:pass@cluster.mongodb.net/prismhold
 PORT=3000
 JWT_SECRET=your-secret-key-change-in-production
-GOOGLE_CLIENT_ID=your-google-client-id (optional, for Google OAuth)
-
-# Razorpay Payment Gateway Configuration
 RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+
+# Optional: Firebase (Phone OTP, Google)
+FIREBASE_SERVICE_ACCOUNT_PATH=backend/serviceAccountKey.json
+
+# Optional: Email OTP (Resend or SMTP)
+RESEND_API_KEY=re_xxx
+RESEND_FROM=Prism Hold <noreply@yourdomain.com>
 ```
 
-### 4. Start the Backend Server
+### 3. Build CSS
+
+```bash
+npm run build-css
+```
+
+### 4. Start Server
 
 ```bash
 npm start
 ```
 
-Or for development with auto-reload:
+- **Customer site**: http://localhost:3000
+- **Admin panel**: http://localhost:3000/admin
+- **API**: http://localhost:3000/api
+
+### 5. Create Admin User
 
 ```bash
-npm run dev
+npm run create-admin
 ```
 
-The server will start on `http://localhost:3000`
-admin panel :- http://localhost:3000/admin
-### 5. Open the Frontend
+---
 
-Open `index.html` in your browser, or serve it using a local server:
+## API Overview
 
-```bash
-# Using Python
-python3 -m http.server 8000
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check |
+| `/api/products` | GET | List products |
+| `/api/categories` | GET | List categories |
+| `/api/hero` | GET | Hero content |
+| `/api/auth/firebase` | POST | Sign in with Firebase (Phone/Google) |
+| `/api/auth/email-otp/send` | POST | Send email OTP |
+| `/api/auth/email-otp/verify` | POST | Verify email OTP |
+| `/api/profile` | GET/PUT | User profile |
+| `/api/cart` | GET/PUT | Cart |
+| `/api/addresses` | GET/POST/PUT/DELETE | Addresses |
+| `/api/orders` | GET/POST | Orders |
+| `/api/payments/razorpay/create` | POST | Create Razorpay order |
+| `/api/payments/razorpay/verify` | POST | Verify payment |
+| `/api/admin/*` | various | Admin-only (products, orders, users, etc.) |
 
-# Using Node.js http-server
-npx http-server -p 8000
-```
-
-Then open `http://localhost:8000` in your browser.
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/signup` - Create new user account (legacy)
-- `POST /api/auth/login` - Login with email/password (legacy)
-- `POST /api/auth/google` - Google OAuth login (legacy)
-- `POST /api/auth/firebase` - Sign in with Firebase ID token (Phone OTP, Google)
-- `POST /api/auth/email-otp/send` - Send OTP to email
-- `POST /api/auth/email-otp/verify` - Verify email OTP and sign in
-
-### Profile
-- `GET /api/profile` - Get user profile
-- `PUT /api/profile` - Update user profile
-
-### Cart
-- `GET /api/cart` - Get user's cart
-- `PUT /api/cart` - Update user's cart
-
-### Addresses
-- `GET /api/addresses` - Get all user addresses
-- `POST /api/addresses` - Create new address
-- `PUT /api/addresses/:id` - Update address
-- `DELETE /api/addresses/:id` - Delete address
-
-### Orders
-- `GET /api/orders` - Get all user orders
-- `POST /api/orders` - Create new order
-- `PUT /api/orders/:id` - Update order (e.g., cancel)
-
-## Database Structure
-
-The MongoDB database uses the following collections:
-
-- `users` - User accounts
-- `profiles` - User profile information
-- `carts` - Shopping carts
-- `addresses` - Delivery addresses
-- `orders` - Order history
-
-## Migration Notes
-
-### What Changed
-
-1. **Authentication**: Replaced Firebase Auth with JWT-based authentication
-2. **Database**: Replaced Firestore with MongoDB
-3. **Real-time Updates**: Replaced Firebase `onSnapshot` with polling (every 2 seconds)
-4. **API Calls**: All database operations now go through REST API endpoints
-
-### Razorpay Payment Integration Setup
-
-### Prerequisites
-1. Sign up for Razorpay at [Razorpay Dashboard](https://dashboard.razorpay.com)
-2. Get your API credentials:
-   - Key ID (from Settings → API Keys)
-   - Key Secret (from Settings → API Keys)
-
-### Installation
-Install Razorpay Node.js SDK:
-
-```bash
-npm install razorpay
-```
-
-### Environment Variables
-Add these to your `.env` file or set them as environment variables:
-
-```env
-RAZORPAY_KEY_ID=your_razorpay_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_key_secret
-```
-
-### Configuration Steps
-1. **For Test Mode:**
-   - Use Test Mode credentials from Razorpay Dashboard
-   - Test Mode toggle should be ON in dashboard
-
-2. **For Production:**
-   - Use Live Mode credentials from Razorpay Dashboard
-   - Test Mode toggle should be OFF in dashboard
-   - Configure webhook URL in Razorpay Dashboard: `https://yourdomain.com/api/payments/razorpay/webhook`
-   - Enable webhook events: `payment.captured`, `payment.failed`, `payment.authorized`
-
-### Payment Flow
-1. User places order → Order created with status "Pending"
-2. Razorpay order created → Server creates Razorpay order
-3. Payment modal opens → Razorpay checkout modal appears
-4. User completes payment → Payment processed by Razorpay
-5. Payment verification → Server verifies payment signature
-6. Order status updated → "Processing" on success, "Failed" on failure
-
-### Testing
-- Use Razorpay test credentials (Test Mode ON)
-- Test with test cards: 4111 1111 1111 1111 (any future expiry, any CVV)
-- Test UPI: success@razorpay (for success), failure@razorpay (for failure)
-- Verify webhook handling in Razorpay dashboard logs
+---
 
 ## Features
 
-- ✅ User registration and login
-- ✅ Shopping cart persistence
-- ✅ Address management
-- ✅ Order placement and tracking
-- ✅ Profile management
-- ✅ Email OTP sign-in
-- ✅ Phone OTP sign-in (Firebase)
-- ✅ Google sign-in (Firebase)
+### Customer
+- Product catalog with search & filters
+- Category-based browsing
+- Shopping cart (persisted per user)
+- Address management
+- Checkout with Razorpay
+- Order tracking
+- Email OTP, Phone OTP, Google sign-in
+- Help / Contact requests
 
-## Troubleshooting
+### Admin
+- Dashboard with stats
+- Product CRUD (images, stock, categories)
+- Category management
+- Order management & status updates
+- User management
+- Hero content editor (brand, title, subtitle, images)
+- Promo codes
+- Help request replies
 
-### MongoDB Connection Issues
+---
 
-If you see connection errors:
-1. Verify MongoDB is running: `mongosh` or `mongo`
-2. Check the connection string in `server.js` or `.env`
-3. Ensure MongoDB is accessible on port 27017
+## Deployment
 
-### CORS Issues
+### Frontend (Vercel)
 
-If you encounter CORS errors when accessing the API:
-- The server is configured to allow all origins in development
-- For production, update CORS settings in `server.js`
+1. Connect repo to Vercel
+2. **Root Directory**: `.`
+3. **Build Command**: `npm run build`
+4. **Output Directory**: `frontend/public`
+5. Set `API_BASE_URL` in `frontend/public/index.html` (or via config) to your backend URL
 
-### Firebase Auth Setup (Email OTP, Phone OTP, Google)
+### Backend (Render)
 
-1. **Firebase Console**: Create a project at [Firebase Console](https://console.firebase.google.com)
-2. **Enable Auth methods**: Authentication → Sign-in method → Enable Phone, Google (and optionally Email/Password)
-3. **Frontend**: Edit `frontend/public/config/firebase.js` with your Firebase web config (Project Settings → Your apps)
-4. **Backend**: Add to `.env`:
-   - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (from Service Accounts)
-   - `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` for email OTP (e.g. Gmail app password)
+1. New Web Service → Connect repo
+2. **Root Directory**: `backend` (if backend is in subfolder) or `.`
+3. **Build**: `npm install`
+4. **Start**: `node backend/server.js` or `npm start`
+5. Set env vars: `MONGO_URI`, `JWT_SECRET`, `RAZORPAY_*`, `FIREBASE_*`, etc.
 
-### Authentication Issues
+### MongoDB Atlas
 
-- Clear browser localStorage if you experience auth issues
-- Check that the JWT_SECRET is set (default is used if not set)
-- Verify the API_BASE_URL in `index.html` matches your server URL
+Create cluster, get connection string, add to `MONGO_URI`.
 
-## Production Deployment
+---
 
-For production deployment:
-
-1. Set secure environment variables
-2. Use a production MongoDB instance (MongoDB Atlas, etc.)
-3. Update `API_BASE_URL` in `index.html` to your production server URL
-4. Enable HTTPS
-5. Configure proper CORS settings
-6. Set up Google OAuth credentials if needed
-
-## Admin Panel
-
-### Setting Up Admin Access
-
-1. Create an admin user by running:
-   ```bash
-   npm run create-admin
-   ```
-   Follow the prompts to enter email, password, and name.
-
-2. Access the admin panel at:
-   ```
-   http://localhost:3000/admin
-   ```
-
-3. Login with your admin credentials.
-
-### Admin Features
-
-- **Dashboard**: Overview with statistics and recent orders
-- **Products Management**: Add, edit, and delete products
-- **Categories Management**: Manage product categories
-- **Orders Management**: View all orders and update order status
-- **Users Management**: View users, toggle admin status, delete users
-- **Help Requests**: View and manage customer help requests
-
-### Admin API Endpoints
-
-All admin endpoints require authentication with an admin token:
-
-- `POST /api/admin/login` - Admin login
-- `GET /api/admin/stats` - Dashboard statistics
-- `GET /api/admin/products` - List all products
-- `POST /api/admin/products` - Create product
-- `PUT /api/admin/products/:id` - Update product
-- `DELETE /api/admin/products/:id` - Delete product
-- `GET /api/admin/categories` - List all categories
-- `POST /api/admin/categories` - Create category
-- `PUT /api/admin/categories/:id` - Update category
-- `DELETE /api/admin/categories/:id` - Delete category
-- `GET /api/admin/orders` - List all orders
-- `PUT /api/admin/orders/:id/status` - Update order status
-- `GET /api/admin/users` - List all users
-- `PUT /api/admin/users/:id` - Update user (toggle admin, etc.)
-- `DELETE /api/admin/users/:id` - Delete user
-- `GET /api/admin/help-requests` - List all help requests
-- `PUT /api/admin/help-requests/:id` - Update help request status
-- `DELETE /api/admin/help-requests/:id` - Delete help request
-
-## Support
-
-For issues or questions, check the server logs and browser console for error messages.
+## License
 
