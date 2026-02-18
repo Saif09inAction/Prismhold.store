@@ -7,6 +7,9 @@
     <meta name="description" content="Prismhold - Luxury accessories curated for the modern lifestyle. Shop designer clutches, jewelry, bags & accessories. Hold elegance in your hand. Free shipping.">
     <meta name="keywords" content="prismhold, prism hold, luxury accessories, designer clutches, luxury bags, jewelry, handbags">
     <link rel="canonical" href="https://prismhold.store">
+    <!-- Preconnect to API so first requests start faster -->
+    <link rel="preconnect" href="https://prismhold-store-1.onrender.com" crossorigin>
+    <link rel="dns-prefetch" href="https://prismhold-store-1.onrender.com">
     <!-- Favicon for Google search & browser - 48x48 recommended by Google -->
     <link rel="icon" type="image/png" sizes="48x48" href="/logo.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/logo.png">
@@ -573,14 +576,14 @@
         // Load categories from API
         async function loadCategories() {
             try {
-                const response = await fetch(`${API_BASE_URL}/categories`, { cache: 'no-store' });
+                const response = await fetch(`${API_BASE_URL}/categories`, { cache: 'default' });
                 if (response.ok) {
                     categories = await response.json();
                     renderCategoriesPage();
                 }
                 
                 // Load top 3 most ordered categories
-                const topResponse = await fetch(`${API_BASE_URL}/categories/most-ordered`, { cache: 'no-store' });
+                const topResponse = await fetch(`${API_BASE_URL}/categories/most-ordered`, { cache: 'default' });
                 if (topResponse.ok) {
                     topCategories = await topResponse.json();
                     renderCategoryButtons();
@@ -698,7 +701,7 @@
         // Load hero content
         async function loadHeroContent() {
             try {
-                const res = await fetch(`${API_BASE_URL}/hero`, { cache: 'no-store' });
+                const res = await fetch(`${API_BASE_URL}/hero`, { cache: 'default' });
                 if (!res.ok) throw new Error('Failed to load hero');
                 const data = await res.json();
                 console.log('[Hero] Loaded data from API:', data);
@@ -1073,7 +1076,7 @@
         
         async function loadStoreSettings() {
             try {
-                const r = await fetch(`${API_BASE_URL}/settings`, { cache: 'no-store' });
+                const r = await fetch(`${API_BASE_URL}/settings`, { cache: 'default' });
                 if (r.ok) {
                     const d = await r.json();
                     storeSettings = { freeDeliveryQuantity: d.freeDeliveryQuantity || 0, deliveryChargesAmount: (d.deliveryChargesAmount != null && d.deliveryChargesAmount >= 0) ? d.deliveryChargesAmount : 0 };
@@ -1081,13 +1084,15 @@
             } catch (e) { /* ignore */ }
         }
         
-        // Initialize app - check for existing auth
+        // Initialize app - load hero, categories, products, settings in parallel (faster first paint)
         window.initApp = async function() {
-            await loadHeroContent(); // Load hero first
-            await loadCategories(); // Load categories first
-            await loadProducts(); // Load products
-            setupScrollAnimations(); // Scroll-reveal for main sections
-            await loadStoreSettings();
+            await Promise.all([
+                loadHeroContent(),
+                loadCategories(),
+                loadProducts(),
+                loadStoreSettings()
+            ]);
+            setupScrollAnimations();
             const token = getAuthToken();
             const user = getCurrentUser();
             

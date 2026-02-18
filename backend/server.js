@@ -1657,11 +1657,13 @@ app.get('/api/settings', async (req, res) => {
         if (!s) {
             s = await Settings.findOneAndUpdate({}, {}, { upsert: true, new: true });
         }
+        res.set('Cache-Control', 'public, max-age=60');
         res.json({
             freeDeliveryQuantity: (s && s.freeDeliveryQuantity) || 0,
             deliveryChargesAmount: (s && s.deliveryChargesAmount) != null ? s.deliveryChargesAmount : 0
         });
     } catch (e) {
+        res.set('Cache-Control', 'public, max-age=60');
         res.json({ freeDeliveryQuantity: 0, deliveryChargesAmount: 0 });
     }
 });
@@ -2120,6 +2122,7 @@ app.get('/api/categories', async (req, res) => {
             });
         }
         const categories = await Category.find().sort({ name: 1 });
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(categories.map(convertCategoryImages));
     } catch (error) {
         console.error('Get categories error:', error);
@@ -2561,6 +2564,7 @@ app.get('/api/hero', async (req, res) => {
         } else {
             hero = convertHeroImages(hero);
         }
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(hero);
     } catch (error) {
         console.error('Get hero error:', error);
