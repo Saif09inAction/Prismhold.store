@@ -1779,6 +1779,7 @@ app.get('/api/admin/users', authenticateAdmin, async (req, res) => {
         res.json(users.map(user => ({
             id: user._id.toString(),
             email: user.email,
+            phone: user.phone,
             displayName: user.displayName,
             isAdmin: user.isAdmin,
             createdAt: user.createdAt
