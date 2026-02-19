@@ -248,6 +248,11 @@
         }
         .category-btn:active { transform: scale(0.96) translateY(-1px); }
 
+        /* Add-to-cart button: ensure plus icon always visible (no white-on-white on click) */
+        .add-to-cart-btn { color: var(--color-primary); }
+        .add-to-cart-btn:hover, .add-to-cart-btn:active { background-color: var(--color-primary) !important; color: white !important; }
+        .add-to-cart-btn svg, .add-to-cart-btn i { color: inherit; stroke: currentColor; }
+
         /* Nav link active state (section highlight) */
         .main-nav-link.active { color: var(--color-primary); font-weight: 600; }
         .main-nav-link.active span { width: 100%; }
@@ -473,6 +478,43 @@
         const API_BASE = window.API_BASE || 'https://prismhold-store-1.onrender.com';
         const API_BASE_URL = `${API_BASE}/api`;
         let storeSocket = null;
+
+        // Warm up backend (Render cold start) - fire early, don't await
+        fetch(API_BASE_URL + '/health').catch(function(){});
+
+        // Fetch with retry (handles cold start / transient failures)
+        async function fetchWithRetry(url, options, retries) {
+            retries = retries || 3;
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const r = await fetch(url, options);
+                    if (r.ok) return r;
+                    if (i === retries - 1) return r;
+                } catch (e) {
+                    if (i === retries - 1) throw e;
+                }
+                await new Promise(function(resolve) { setTimeout(resolve, 2000); });
+            }
+        }
+
+        // Session cache keys
+        const CACHE_KEY_HERO = 'ph_hero';
+        const CACHE_KEY_PRODUCTS = 'ph_products';
+        const CACHE_KEY_CATEGORIES = 'ph_categories';
+        const CACHE_TTL = 5 * 60 * 1000; // 5 min
+
+        function getCached(key) {
+            try {
+                const s = sessionStorage.getItem(key);
+                if (!s) return null;
+                const o = JSON.parse(s);
+                if (o && o.ts && (Date.now() - o.ts) < CACHE_TTL) return o.data;
+            } catch (e) {}
+            return null;
+        }
+        function setCached(key, data) {
+            try { sessionStorage.setItem(key, JSON.stringify({ data: data, ts: Date.now() })); } catch (e) {}
+        }
         
         // Convert image URLs: Google Drive share links to direct, relative /api/images/ to full URL
         function toDirectImageUrl(url) {
@@ -573,27 +615,30 @@
             return heroImages;
         }
 
-        // Load categories from API
+        // Load categories from API (with cache + retry)
         async function loadCategories() {
+            const cached = getCached(CACHE_KEY_CATEGORIES);
+            if (cached && Array.isArray(cached)) {
+                categories = cached;
+                renderCategoriesPage();
+            }
             try {
-                const response = await fetch(`${API_BASE_URL}/categories`, { cache: 'default' });
+                const response = await fetchWithRetry(`${API_BASE_URL}/categories`, { cache: 'default' });
                 if (response.ok) {
                     categories = await response.json();
+                    setCached(CACHE_KEY_CATEGORIES, categories);
                     renderCategoriesPage();
                 }
-                
-                // Load top 3 most ordered categories
-                const topResponse = await fetch(`${API_BASE_URL}/categories/most-ordered`, { cache: 'default' });
+                const topResponse = await fetchWithRetry(`${API_BASE_URL}/categories/most-ordered`, { cache: 'default' });
                 if (topResponse.ok) {
                     topCategories = await topResponse.json();
-                    renderCategoryButtons();
                 } else {
-                    // Fallback: use first 3 categories
                     topCategories = categories.slice(0, 3);
-                    renderCategoryButtons();
                 }
+                renderCategoryButtons();
             } catch (error) {
                 console.error('Error loading categories:', error);
+                if (categories.length > 0) renderCategoryButtons();
             }
         }
         
@@ -643,7 +688,7 @@
                             <div class="product-image-wrapper aspect-square bg-gray-100 relative">
                                 ${soldOut ? '<div class="absolute inset-0 bg-black/60 flex items-center justify-center z-20"><span class="text-white font-bold text-sm tracking-wider uppercase">Sold Out</span></div>' : ''}
                                 <img src="${productImage}" class="product-image" loading="lazy" alt="${p.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 400 400\\'%3E%3Crect fill=\\'%23f3f4f6\\' width=\\'400\\' height=\\'400\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' font-family=\\'sans-serif\\' font-size=\\'18\\' fill=\\'%239ca3af\\'%3EImage%3C/text%3E%3C/svg%3E'">
-                                ${!soldOut ? `<button onclick="event.stopPropagation(); addToCart(${p.id})" class="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md text-primary w-11 h-11 rounded-full flex items-center justify-center shadow-xl transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 hover:bg-primary hover:text-white hover:scale-110 active:scale-95 z-10"><i data-lucide="plus" class="w-5 h-5"></i></button>` : ''}
+                                ${!soldOut ? `<button onclick="event.stopPropagation(); addToCart(${p.id})" class="add-to-cart-btn absolute bottom-4 right-4 bg-white/95 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center shadow-xl transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 hover:scale-110 active:scale-95 z-10 border border-gray-200" aria-label="Add to cart"><i data-lucide="plus" class="w-5 h-5 text-current"></i></button>` : ''}
                             </div>
                             <div class="p-5">
                                 <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">${p.category}</p>
@@ -698,18 +743,28 @@
             lucide.createIcons();
         }
 
-        // Load hero content
+        // Load hero content (with cache + retry)
         async function loadHeroContent() {
+            const cached = getCached(CACHE_KEY_HERO);
+            if (cached) {
+                heroData = cached;
+                const raw = Array.isArray(cached.images) ? cached.images.map(toDirectImageUrl).filter(Boolean) : [];
+                heroImages = raw.filter(function(img) { return !/image\.png$/i.test(img || ''); });
+                heroMobileImages = Array.isArray(cached.mobileImages) ? cached.mobileImages.map(toDirectImageUrl).filter(Boolean) : [];
+                applyHeroStyles(cached);
+                startHeroRotation();
+            }
             try {
-                const res = await fetch(`${API_BASE_URL}/hero`, { cache: 'default' });
+                const res = await fetchWithRetry(`${API_BASE_URL}/hero`, { cache: 'default' });
                 if (!res.ok) throw new Error('Failed to load hero');
                 const data = await res.json();
                 console.log('[Hero] Loaded data from API:', data);
                 heroData = data;
                 const raw = Array.isArray(data.images) ? data.images.map(toDirectImageUrl).filter(Boolean) : [];
-                heroImages = raw.filter(img => !/image\.png$/i.test(img || ''));
+                heroImages = raw.filter(function(img) { return !/image\.png$/i.test(img || ''); });
                 const rawMobile = Array.isArray(data.mobileImages) ? data.mobileImages.map(toDirectImageUrl).filter(Boolean) : [];
                 heroMobileImages = rawMobile;
+                setCached(CACHE_KEY_HERO, data);
                 applyHeroStyles(data);
                 startHeroRotation();
             } catch (error) {
@@ -931,21 +986,38 @@
         async function loadProducts() {
             if (productsLoading) return;
             productsLoading = true;
-            renderProductSkeletons();
+            const cached = getCached(CACHE_KEY_PRODUCTS);
+            if (cached && Array.isArray(cached) && cached.length > 0) {
+                products = cached.map(function(p) { return Object.assign({}, p, { id: p.id || p._id }); });
+                filterProducts();
+                loadCategorySections();
+                loadRecommendations();
+                loadNewProducts();
+            } else {
+                renderProductSkeletons();
+            }
             try {
-                const response = await fetch(`${API_BASE_URL}/products`, { headers: { 'Content-Type': 'application/json' } });
+                const response = await fetchWithRetry(`${API_BASE_URL}/products`, { headers: { 'Content-Type': 'application/json' } });
                 if (!response.ok) throw new Error(await response.text());
                 const data = await response.json();
-                products = (data || []).map(p => ({ ...p, id: p.id || p._id }));
+                products = (data || []).map(function(p) { return Object.assign({}, p, { id: p.id || p._id }); });
+                setCached(CACHE_KEY_PRODUCTS, products);
                 filterProducts();
                 loadCategorySections();
                 loadRecommendations();
                 loadNewProducts();
             } catch (error) {
                 console.error('Error loading products:', error);
-                const list = document.getElementById('product-list');
-                if (list) list.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Failed to load products. <button type="button" onclick="loadProducts()" class="text-accent font-medium underline">Retry</button></div>';
-                alertMessage('Failed to load products. Please refresh the page.', 'error');
+                if (products.length > 0) {
+                    filterProducts();
+                    loadCategorySections();
+                    loadRecommendations();
+                    loadNewProducts();
+                } else {
+                    const list = document.getElementById('product-list');
+                    if (list) list.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">Unable to load products. <button type="button" onclick="loadProducts()" class="text-accent font-medium underline">Retry</button></div>';
+                    alertMessage('Unable to load products. Click Retry or refresh the page.', 'error');
+                }
             } finally {
                 productsLoading = false;
             }
@@ -981,7 +1053,7 @@
                                     <div class="product-image-wrapper aspect-square bg-gray-100 relative">
                                         ${soldOut ? '<div class="absolute inset-0 bg-black/60 flex items-center justify-center z-20"><span class="text-white font-bold text-sm tracking-wider uppercase">Sold Out</span></div>' : ''}
                                         <img src="${productImage}" class="product-image" loading="lazy" alt="${p.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 400 400\\'%3E%3Crect fill=\\'%23f3f4f6\\' width=\\'400\\' height=\\'400\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' font-family=\\'sans-serif\\' font-size=\\'18\\' fill=\\'%239ca3af\\'%3EImage%3C/text%3E%3C/svg%3E'">
-                                        ${!soldOut ? `<button onclick="event.stopPropagation(); addToCart(${p.id})" class="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md text-primary w-11 h-11 rounded-full flex items-center justify-center shadow-xl transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 hover:bg-primary hover:text-white hover:scale-110 active:scale-95 z-10"><i data-lucide="plus" class="w-5 h-5"></i></button>` : ''}
+                                        ${!soldOut ? `<button onclick="event.stopPropagation(); addToCart(${p.id})" class="add-to-cart-btn absolute bottom-4 right-4 bg-white/95 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center shadow-xl transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 hover:scale-110 active:scale-95 z-10 border border-gray-200" aria-label="Add to cart"><i data-lucide="plus" class="w-5 h-5 text-current"></i></button>` : ''}
                                     </div>
                                     <div class="p-5">
                                         <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">${p.category}</p>
@@ -1026,8 +1098,8 @@
                             <div class="bg-white rounded-2xl overflow-hidden product-card-modern group cursor-pointer" onclick="openProductDetail(${p.id})">
                                 <div class="product-image-wrapper aspect-square bg-gray-100 relative">
                                     <img src="${productImage}" class="product-image" loading="lazy" alt="${p.name}">
-                                    <button onclick="event.stopPropagation(); addToCart(${p.id})" class="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md text-primary w-11 h-11 rounded-full flex items-center justify-center shadow-xl transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 hover:bg-primary hover:text-white">
-                                        <i data-lucide="plus" class="w-5 h-5"></i>
+                                    <button onclick="event.stopPropagation(); addToCart(${p.id})" class="add-to-cart-btn absolute bottom-4 right-4 bg-white/95 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center shadow-xl transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 border border-gray-200" aria-label="Add to cart">
+                                        <i data-lucide="plus" class="w-5 h-5 text-current"></i>
                                     </button>
                                 </div>
                                 <div class="p-5">
@@ -1086,6 +1158,8 @@
         
         // Initialize app - load hero, categories, products, settings in parallel (faster first paint)
         window.initApp = async function() {
+            // Show product skeletons immediately so loading state is visible right after hero (no blank gap)
+            renderProductSkeletons();
             await Promise.all([
                 loadHeroContent(),
                 loadCategories(),
@@ -1923,7 +1997,7 @@
                     <div class="product-image-wrapper aspect-square bg-gray-100 relative">
                         ${soldOut ? '<div class="absolute inset-0 bg-black/60 flex items-center justify-center z-20"><span class="text-white font-bold text-lg tracking-wider uppercase">Sold Out</span></div>' : ''}
                         <img src="${productImage}" class="product-image" loading="lazy" alt="${p.name}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 400 400\\'%3E%3Crect fill=\\'%23f3f4f6\\' width=\\'400\\' height=\\'400\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' font-family=\\'sans-serif\\' font-size=\\'18\\' fill=\\'%239ca3af\\'%3EImage%3C/text%3E%3C/svg%3E'">
-                        ${!soldOut ? `<button onclick="event.stopPropagation(); addToCart(${p.id})" class="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md text-primary w-11 h-11 rounded-full flex items-center justify-center shadow-xl transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 hover:bg-primary hover:text-white hover:scale-110 active:scale-95 z-10" aria-label="Add to cart"><i data-lucide="plus" class="w-5 h-5"></i></button>` : ''}
+                        ${!soldOut ? `<button onclick="event.stopPropagation(); addToCart(${p.id})" class="add-to-cart-btn absolute bottom-4 right-4 bg-white/95 backdrop-blur-md w-11 h-11 rounded-full flex items-center justify-center shadow-xl transform translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-400 hover:scale-110 active:scale-95 z-10 border border-gray-200" aria-label="Add to cart"><i data-lucide="plus" class="w-5 h-5 text-current"></i></button>` : ''}
                         <div class="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </div>
                     <div class="p-5">
@@ -3126,7 +3200,7 @@
                 <div class="bg-white rounded-xl overflow-hidden product-card-modern group cursor-pointer" onclick="openProductDetail(${p.id})">
                     <div class="product-image-wrapper aspect-square bg-gray-100 relative">
                         <img src="${productImage}" class="product-image" loading="lazy" alt="${p.name}">
-                        <button onclick="event.stopPropagation(); addToCart(${p.id})" class="absolute bottom-3 right-3 bg-white/90 backdrop-blur text-primary w-10 h-10 rounded-full flex items-center justify-center shadow-lg transform translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hover:bg-primary hover:text-white"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                        <button onclick="event.stopPropagation(); addToCart(${p.id})" class="add-to-cart-btn absolute bottom-3 right-3 bg-white/90 backdrop-blur w-10 h-10 rounded-full flex items-center justify-center shadow-lg transform translate-y-10 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 border border-gray-200"><i data-lucide="plus" class="w-5 h-5 text-current"></i></button>
                     </div>
                     <div class="p-4">
                         <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">${p.category}</p>
